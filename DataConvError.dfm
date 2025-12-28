@@ -1,0 +1,154 @@
+object frmDataConvErr: TfrmDataConvErr
+  Left = 0
+  Top = 0
+  BorderIcons = [biSystemMenu]
+  BorderStyle = bsDialog
+  Caption = 'Data Import Conversion Error'
+  ClientHeight = 368
+  ClientWidth = 594
+  Color = clBtnFace
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'Tahoma'
+  Font.Style = []
+  FormStyle = fsStayOnTop
+  KeyPreview = True
+  OldCreateOrder = False
+  Position = poMainFormCenter
+  OnKeyDown = FormKeyDown
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Memo1: TMemo
+    Left = 0
+    Top = 64
+    Width = 594
+    Height = 304
+    Margins.Left = 100
+    Margins.Top = 100
+    Margins.Right = 100
+    Margins.Bottom = 100
+    Align = alClient
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -13
+    Font.Name = 'Arial'
+    Font.Style = []
+    ParentFont = False
+    ScrollBars = ssVertical
+    TabOrder = 0
+    ExplicitWidth = 592
+    ExplicitHeight = 302
+  end
+  object Panel1: TPanel
+    Left = 0
+    Top = 0
+    Width = 594
+    Height = 64
+    Align = alTop
+    BevelOuter = bvNone
+    TabOrder = 1
+    ExplicitWidth = 592
+    object Label1: TLabel
+      Left = 10
+      Top = 6
+      Width = 364
+      Height = 16
+      Alignment = taCenter
+      Caption = 'The following errors occurred when importing your trade history.'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object spdPrint: TSpeedButton
+      Left = 505
+      Top = 21
+      Width = 70
+      Height = 24
+      Cursor = crHandPoint
+      Hint = 'Print'
+      AllowAllUp = True
+      GroupIndex = 1
+      Caption = 'Print'
+      Flat = True
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -11
+      Font.Name = 'Arial'
+      Font.Style = []
+      Glyph.Data = {
+        6E040000424D6E04000000000000360000002800000013000000120000000100
+        1800000000003804000000000000000000000000000000000000C8D0D4C8D0D4
+        C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0
+        D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4000000C8D0D4C8D0D4C8D0D4C8
+        D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4
+        C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4000000C8D0D4C8D0D4C8D0D40000000000
+        00000000000000000000000000000000000000000000000000000000C8D0D4C8
+        D0D4C8D0D4C8D0D4C8D0D4000000C8D0D4C8D0D4000000C6C6C6C6C6C6C6C6C6
+        C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6000000C6C6C6000000C8D0D4C8D0
+        D4C8D0D4C8D0D4000000C8D0D400000000000000000000000000000000000000
+        0000000000000000000000000000000000000000C6C6C6000000C8D0D4C8D0D4
+        C8D0D4000000C8D0D4000000C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C600FF
+        FF00FFFF00FFFFC6C6C6C6C6C6000000000000000000C8D0D4C8D0D4C8D0D400
+        0000C8D0D4000000C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6848484848484
+        848484C6C6C6C6C6C6000000C6C6C6000000C8D0D4C8D0D4C8D0D4000000C8D0
+        D400000000000000000000000000000000000000000000000000000000000000
+        0000000000000000C6C6C6C6C6C6000000C8D0D4C8D0D4000000C8D0D4000000
+        C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C6C60000
+        00C6C6C6000000C6C6C6000000C8D0D4C8D0D4000000C8D0D4C8D0D400000000
+        0000000000000000000000000000000000000000000000000000C6C6C6000000
+        C6C6C6000000000000C8D0D4C8D0D4000000C8D0D4C8D0D4C8D0D4000000FFFF
+        FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000C6C6C6000000C6
+        C6C6000000C8D0D4C8D0D4000000C8D0D4C8D0D4C8D0D4C8D0D4000000FFFFFF
+        000000000000000000000000000000FFFFFF000000000000000000000000C8D0
+        D4C8D0D4C8D0D4000000C8D0D4C8D0D4C8D0D4C8D0D4000000FFFFFFFFFFFFFF
+        FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF000000C8D0D4C8D0D4C8D0D4C8D0D4
+        C8D0D4000000C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4000000FFFFFF0000000000
+        00000000000000000000FFFFFF000000C8D0D4C8D0D4C8D0D4C8D0D4C8D0D400
+        0000C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4000000FFFFFFFFFFFFFFFFFFFFFFFF
+        FFFFFFFFFFFFFFFFFFFFFFFF000000C8D0D4C8D0D4C8D0D4C8D0D4000000C8D0
+        D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D400000000000000000000000000000000
+        0000000000000000000000C8D0D4C8D0D4C8D0D4C8D0D4000000C8D0D4C8D0D4
+        C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0
+        D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4000000C8D0D4C8D0D4C8D0D4C8
+        D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4
+        C8D0D4C8D0D4C8D0D4C8D0D4C8D0D4000000}
+      ParentFont = False
+      ParentShowHint = False
+      ShowHint = True
+      Transparent = False
+      OnClick = spdPrintClick
+    end
+    object Label2: TLabel
+      Left = 10
+      Top = 24
+      Width = 330
+      Height = 16
+      Alignment = taCenter
+      Caption = 'These errors have been saved in an "error.log" file in your '
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+    object Label3: TLabel
+      Left = 10
+      Top = 42
+      Width = 188
+      Height = 16
+      Alignment = taCenter
+      Caption = ' "my documents\tradelog" folder.'
+      Font.Charset = ANSI_CHARSET
+      Font.Color = clWindowText
+      Font.Height = -13
+      Font.Name = 'Arial'
+      Font.Style = []
+      ParentFont = False
+    end
+  end
+end

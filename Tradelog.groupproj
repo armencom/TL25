@@ -1,0 +1,36 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <ProjectGuid>{61B80B97-CB75-4084-B198-8CDAF973B50B}</ProjectGuid>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="TradeLog.dproj">
+            <Dependencies/>
+        </Projects>
+    </ItemGroup>
+    <ProjectExtensions>
+        <Borland.Personality>Default.Personality.12</Borland.Personality>
+        <Borland.ProjectType/>
+        <BorlandProject>
+            <Default.Personality/>
+        </BorlandProject>
+    </ProjectExtensions>
+    <Target Name="TradeLog">
+        <MSBuild Projects="TradeLog.dproj"/>
+    </Target>
+    <Target Name="TradeLog:Clean">
+        <MSBuild Projects="TradeLog.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="TradeLog:Make">
+        <MSBuild Projects="TradeLog.dproj" Targets="Make"/>
+    </Target>
+    <Target Name="Build">
+        <CallTarget Targets="TradeLog"/>
+    </Target>
+    <Target Name="Clean">
+        <CallTarget Targets="TradeLog:Clean"/>
+    </Target>
+    <Target Name="Make">
+        <CallTarget Targets="TradeLog:Make"/>
+    </Target>
+    <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
+</Project>

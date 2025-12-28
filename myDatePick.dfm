@@ -1,0 +1,79 @@
+object frmDatePick: TfrmDatePick
+  Left = 436
+  Top = 105
+  AutoSize = True
+  BorderStyle = bsDialog
+  BorderWidth = 8
+  ClientHeight = 81
+  ClientWidth = 187
+  Color = clBtnFace
+  DefaultMonitor = dmMainForm
+  DragKind = dkDock
+  Font.Charset = DEFAULT_CHARSET
+  Font.Color = clWindowText
+  Font.Height = -11
+  Font.Name = 'MS Sans Serif'
+  Font.Style = []
+  FormStyle = fsStayOnTop
+  OldCreateOrder = False
+  Position = poMainFormCenter
+  OnActivate = FormActivate
+  OnCreate = FormCreate
+  PixelsPerInch = 96
+  TextHeight = 13
+  object Label1: TLabel
+    Left = 0
+    Top = 0
+    Width = 32
+    Height = 13
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
+    Caption = 'Label1'
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -12
+    Font.Name = 'MS Sans Serif'
+    Font.Style = []
+    ParentFont = False
+  end
+  object btnOK: TButton
+    Left = 32
+    Top = 56
+    Width = 75
+    Height = 25
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
+    Caption = 'OK'
+    Default = True
+    TabOrder = 0
+    OnClick = btnOKClick
+  end
+  object btnCancel: TButton
+    Left = 112
+    Top = 56
+    Width = 75
+    Height = 25
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
+    Cancel = True
+    Caption = 'Cancel'
+    TabOrder = 1
+    OnClick = btnCancelClick
+  end
+  object cxDate: TcxDateEdit
+    Left = 32
+    Top = 24
+    Margins.Left = 2
+    Margins.Top = 2
+    Margins.Right = 2
+    Margins.Bottom = 2
+    TabOrder = 2
+    Width = 121
+  end
+end

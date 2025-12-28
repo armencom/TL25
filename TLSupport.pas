@@ -616,7 +616,7 @@ begin
 
       // 3. Upload the file
       // Syntax: UploadFile(LocalFileName, RemoteFileName, Append)
-      sFile := '/home/tradelog-backup/backup/' + TPath.GetFileNameWithoutExtension(sUploadFile) + formatdatetime('yyyymmdd-hhmmsszzz', Now) + '.txt';
+      sFile := '/home/tradelog-backup/backup/' + TPath.GetFileNameWithoutExtension(sUploadFile) + formatdatetime('yyyymmdd-hhmmsszzz', Now) + '.zip';
       SFTPClient.UploadFile(sUploadFile, sFile, False);
 
       ShowMessage('Upload Successful!');

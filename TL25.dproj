@@ -1053,9 +1053,6 @@
         <DCCReference Include="frmNewStrategies.pas">
             <Form>NewStrategies</Form>
         </DCCReference>
-        <DCCReference Include="frmOptionDialog.pas">
-            <Form>frmOptDialog</Form>
-        </DCCReference>
         <DCCReference Include="SciZipFile.pas"/>
         <DCCReference Include="FastReportsPreview.pas">
             <Form>frmFastReports</Form>
@@ -1214,8 +1211,8 @@
             <DesignClass>TDataModule</DesignClass>
         </DCCReference>
         <DCCReference Include="Security.pas"/>
-        <DCCReference Include="frmOptionTest.pas">
-            <Form>frmOptionTest</Form>
+        <DCCReference Include="frmOption.pas">
+            <Form>frmOptionDlg</Form>
             <FormType>dfm</FormType>
         </DCCReference>
         <None Include="Profiling\AQtimeModule1.aqt"/>

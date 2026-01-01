@@ -1334,7 +1334,6 @@ type
     procedure bbFile_EditClick(Sender: TObject);
     procedure btnHelp8949RptClick(Sender: TObject);
     procedure cbForm8949Click(Sender: TObject);
-    procedure dxBarButton6Click(Sender: TObject);
 //    procedure cbShowSSNClick(Sender: TObject);
 
   private
@@ -1434,7 +1433,7 @@ uses
   TLRegister, SelectDateRange,
   OpenTrades, ReadMe, frmOFX, EditSplit, // frmOpTick,
   FileSave, // findStocks, // dateErr,
-  frmSendSupportFiles, frmOptionDialog, frmOptionTest, frmAssignStrategy, ChartTimes, bcFunctions, // trial,
+  frmSendSupportFiles, frmOption, frmAssignStrategy, ChartTimes, bcFunctions, // trial,
   frmPageSetupDlg, TLSettings, splash, messagePanel, TLUpdate,
   TypeMult, TLCommonLib, fm1099Info, TLExerciseAssign, ExerciseAssignList,
   Web, WebGet, //
@@ -4799,26 +4798,6 @@ begin
   glbBLWizOpen := false;
 end; // BCImportDateRange
 
-
-procedure TfrmMain.dxBarButton6Click(Sender: TObject);
-begin
-
-  if TfrmOptionTest.Execute = mrOK then begin
-    try
-      screen.cursor := crHourGlass;
-      statBar('Saving Trade Type Settings');
-      readFilter;
-      SetOptions;
-      SetWSDefer;
-      // applies the changes to the trades
-      applyChangesToMultipliers(true);
-      dispProfit(True, 0, 0, 0, 0);
-    finally
-      statBar('off');
-      screen.cursor := crDefault;
-    end;
-  end;
-end;
 
 procedure TfrmMain.dxBrokerConnect_Click(Sender: TObject);
 var
@@ -8300,7 +8279,7 @@ end;
 
 procedure TfrmMain.GlobalOptions1Click(Sender: TObject);
 begin
-  if TfrmOptDialog.Execute = mrOK then begin
+  if TfrmOptionDlg.Execute = mrOK then begin
     try
       screen.cursor := crHourGlass;
       statBar('Saving Trade Type Settings');

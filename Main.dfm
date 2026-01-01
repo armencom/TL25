@@ -14980,10 +14980,6 @@ object frmMain: TfrmMain
         end
         item
           Visible = True
-          ItemName = 'dxBarButton6'
-        end
-        item
-          Visible = True
           ItemName = 'bbUser_Register'
         end
         item
@@ -15339,7 +15335,7 @@ object frmMain: TfrmMain
     object dxBarManager1Bar21: TdxBar
       Caption = 'Custom 24'
       CaptionButtons = <>
-      DockedLeft = 425
+      DockedLeft = 324
       DockedTop = 0
       FloatLeft = 1066
       FloatTop = 8
@@ -15393,7 +15389,7 @@ object frmMain: TfrmMain
     object dxBarManager1Bar22: TdxBar
       Caption = 'Custom 26'
       CaptionButtons = <>
-      DockedLeft = 837
+      DockedLeft = 736
       DockedTop = 0
       FloatLeft = 1066
       FloatTop = 8
@@ -18510,7 +18506,6 @@ object frmMain: TfrmMain
       Hint = 'RJ Trade Type Settings'
       Visible = ivAlways
       ImageIndex = 39
-      OnClick = dxBarButton6Click
     end
   end
   object dxBarApplicationMenu1: TdxBarApplicationMenu

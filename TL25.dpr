@@ -38,7 +38,6 @@ uses
   frmAssignStrategy in 'frmAssignStrategy.pas' {AssignStrategy},
   frmNewBBIFU in 'frmNewBBIFU.pas' {NewBBIFU},
   frmNewStrategies in 'frmNewStrategies.pas' {NewStrategies},
-  frmOptionDialog in 'frmOptionDialog.pas' {frmOptDialog},
   SciZipFile in 'SciZipFile.pas',
   FastReportsPreview in 'FastReportsPreview.pas' {frmFastReports},
   frmPageSetupDlg in 'frmPageSetupDlg.pas' {PageSetupDlg},
@@ -107,7 +106,7 @@ uses
   OSIdentifier in 'OSIdentifier.pas',
   uDM in 'uDM.pas' {DM: TDataModule},
   Security in 'Security.pas',
-  frmOptionTest in 'frmOptionTest.pas' {frmOptionTest};
+  frmOption in 'frmOption.pas' {frmOptionDlg};
 
 {$R *.res}
 

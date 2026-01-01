@@ -86,3 +86,11 @@ modules/
 *.tdf
 *.tdz
 *.txt
+
+# sqlite3 database files
+*.tdf
+*.tdf-shm
+*.tdf-wal
+
+# git ignore
+*.gitignore

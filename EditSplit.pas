@@ -138,14 +138,15 @@ var
   procedure AdjustForStockSplit;
   var
     i, j : integer;
-    sSplitSh : string;
+    sSplitSh, sSplitType : string;
     splitShares : double;
   begin
     // get number of open shares/contracts and whether long or short   2011-01-04
     with frmMain.cxGrid1TableView1.DataController do begin
       if (filteredRecordCount < 1) then
         exit;
-      if (pos('OPT', TradeLogFile[filteredRecordIndex[filteredRecordCount - 1]].TypeMult) = 1) then
+      sSplitType := TradeLogFile[filteredRecordIndex[filteredRecordCount - 1]].TypeMult;
+      if ((pos('OPT', sSplitType) = 1) or (pos('FUT', sSplitType) = 1)) then
         sSplitSh := delCommas(frmMain.txtContrOpen.caption)
       else
         sSplitSh := delCommas(frmMain.txtSharesOpen.caption);

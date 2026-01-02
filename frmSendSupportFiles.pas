@@ -313,23 +313,29 @@ begin
             + cr //
             + 'We will contact you shortly.');
         end
-        else begin
-          sm('TradeLog successfully uploaded your file, but there was a problem' + cr //
-            + 'creating your support ticket. This could be caused by a user name' + cr //
-            + 'or email address which does not match our records.' + cr //
-            + cr //
-            + 'Please check the name and email and try again.');
-        end;
+        else begin // 2025-11-26 MB - changed error message
+          if messagedlg('TradeLog successfully uploaded your file, but there was' + crlf //
+            + 'a problem creating your support ticket.' + crlf //
+            + 'Would you like to submit it manually on our website?',
+          mtWarning, [mbYes,mbNo], 0) = mrYes then begin
+            ShellExecute(Application.Handle, 'OPEN',
+            pchar('explorer.exe'),
+            pchar('/select, "' + s + '"'),
+            nil,
+            SW_NORMAL);
+            webURL('https://support.tradelogsoftware.com/hc/en-us/requests/new');
+          end; // if messagedlg
+        end; // if not OK
       end; // if bZD
       statBar('off');
       close;
       exit;
     except
       on E: Exception do begin
-        if messagedlg('TradeLog was unable to automatically submit a support' + CRLF //
-          + 'ticket. Would you like to submit it manually on our website?',
-          mtConfirmation, [mbYes,mbNo], 0) = mrYes then
-        begin
+        if messagedlg('TradeLog was unable to  automatically submit' + crlf //
+          + 'a support ticket.' + crlf //
+          + 'Would you like to submit it manually on our website?',
+        mtWarning, [mbYes,mbNo], 0) = mrYes then begin
           ShellExecute(Application.Handle, 'OPEN',
           pchar('explorer.exe'),
           pchar('/select, "' + s + '"'),

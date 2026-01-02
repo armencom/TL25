@@ -24251,10 +24251,10 @@ begin
       // Import via Passiv            |
       // -----------------------------+
       if (TradeLogFile.CurrentAccount.importFilter.FastLinkable) //
-      and not(Settings.LegacyBC //
-        and ((TradeLogFile.CurrentAccount.importFilter.FilterName = 'E-Trade') //
-          or (TradeLogFile.CurrentAccount.importFilter.FilterName = 'Fidelity')) //
-      ) then begin
+//    and not(Settings.LegacyBC //
+      and ((TradeLogFile.CurrentAccount.importFilter.FilterName = 'E-Trade') //
+        or (TradeLogFile.CurrentAccount.importFilter.FilterName = 'Fidelity')) //
+      then begin
         // --- get date range -----
         F := TdlgImport.Create(nil);
         try

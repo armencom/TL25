@@ -6476,14 +6476,14 @@ begin
         bbAccount_BrokerConnect.enabled := true;
         bbAccount_FromFile.enabled := true;
       end
-      else if Settings.LegacyBC //
-      and ((TradeLogFile.CurrentAccount.importFilter.FilterName = 'E-Trade') //
-      or (TradeLogFile.CurrentAccount.importFilter.FilterName = 'Fidelity')) //
-      then begin
-        bbAccount_ImportSettings.enabled := true;
-        bbAccount_BrokerConnect.enabled := true;
-        bbAccount_FromFile.enabled := true;
-      end
+//      else if Settings.LegacyBC //
+//      and ((TradeLogFile.CurrentAccount.importFilter.FilterName = 'E-Trade') //
+//      or (TradeLogFile.CurrentAccount.importFilter.FilterName = 'Fidelity')) //
+//      then begin
+//        bbAccount_ImportSettings.enabled := true;
+//        bbAccount_BrokerConnect.enabled := true;
+//        bbAccount_FromFile.enabled := true;
+//      end
       else if (TradeLogFile.CurrentAccount.ImportFilter.FastLinkable = true) //
       then begin
         bbAccount_ImportSettings.enabled := true;

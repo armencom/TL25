@@ -92,7 +92,7 @@ begin
     ofxBroker:= 'fidelity.com';
     ofxURL:= 'https://ofx.fidelity.com/ftgw/OFX/clients/download';
   end
-  else if TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab' then begin
+  else if TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab' then begin
     ofxBroker:= 'Schwab.com';
     ofxURL:= 'https://ofx.schwab.com/cgi_dev/ofx_server';
   end;

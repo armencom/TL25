@@ -144,7 +144,9 @@ var
     OpBuffer, errCount : Integer;
     iMaj, iMin, iRel, iBld : integer;
     tURL : string;
-  begin
+    dtNow : TDateTime;
+begin
+    dtNow := time;
     tURL := 'https://tradelog.com/';
     try
       hInet := InternetOpen(PChar(Application.title), INTERNET_OPEN_TYPE_PRECONFIG, nil, nil, 0);

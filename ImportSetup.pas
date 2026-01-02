@@ -110,7 +110,7 @@ begin
            + 'you to re-link this broker. Are you ready to' + CRLF //
            + 'do that now?';
         if mdlg(s, mtWarning, mbYesNo, 0) <> mrYes then exit;
-        DeleteBrokerLink(v2ClientToken, sClientName, sPassivBrokerId); //
+        DeleteAllBrokerLinks(v2ClientToken, sClientName, sBrokerName); // 2025-10-16 MB
         bIsLinked := false;
         DeletePassivClient(v2ClientToken, sClientName);
       end;
@@ -155,8 +155,14 @@ begin
         for i := 0 to AcctLst.count - 1 do begin
           t := AcctLst[i];
           lineLst := ParseV2APIResponse(t);
-          if lineLst.Count < 7 then continue;
-          if lineLst[7] = sPassivBrokerId then begin
+          if lineLst.Count < 9 then continue; // 2025-10-10 MB - from 7 to 9; added brokerName
+          // ------------------------------------
+          // Accounts for this Broker
+          // ------------------------------------
+          if lineLst[9] = sBrokerName then begin // 2025-10-10 MB - used to match sPassivBrokerId
+            // ------------------------
+            // Account number if given
+            // ------------------------
             if (lineLst[5] <> '') then begin
               if isnumber(lineLst[5]) then begin
                 TradeLogFile.CurrentAccount.OFXAccount := lineLst[5];
@@ -165,8 +171,12 @@ begin
                 sAcct1 := lineLst[3];
               end;
             end;
+            // ------------------------
             cboAcctName.Properties.Items.AddObject(sAcct1, lineLst);
             cboAcctId.Properties.Items.Add(lineLst[1]); // AcctId
+            // ------------------------
+            // matching AccountID?
+            // ------------------------
             if lineLst[1] = sPassivAcctId then begin
               k := j; // account_id (before inc j)
               bIsLinked := true;
@@ -177,6 +187,7 @@ begin
               cboAcctName.ItemIndex := k;
             end;
           end;
+          // ------------------------------------
           inc(j);
         end; // for i loop
         if (cboAcctName.properties.items.Count < 1 ) then begin // not found
@@ -239,6 +250,7 @@ begin
   try
     if (TradeLogFile.CurrentAccount.ImportFilter.FastLinkable) then begin
       sPassivBrokerId := GetPassivBrokerId(v2ClientToken, sClientName, sBrokerName);
+      // note: GetPassivBrokerId also loads BrokerLst
     end;
   except
     sPassivBrokerId := '';
@@ -286,43 +298,6 @@ begin
   end; // if FastLinkable/IB/Other
   self.Height := ht + 5;
 end; // TdlgImportSetup.setupImpFilter;
-
-
-// ------------------------------------
-// Save JSON data
-// ------------------------------------
-//procedure SaveJSONdata(sData : string);
-//var
-//  sFile, sTmp, ext, localFileName : string;
-//  localFile : textFile;
-//begin
-//  try
-//    // get a unique name for the import backup file
-//    sFile := TradeLogFile.CurrentAccount.FileImportFormat;
-//    Delete(sFile, POS('*', sFile), 1);
-//    Delete(sFile, POS(',', sFile), 1);
-//    ext := TradeLogFile.CurrentAccount.ImportFilter.ImportFileExtension;
-//    localFileName := Settings.ImportDir + '\' + sFile + '_' //
-//      + formatdatetime('yyyymmdd-hhmmss', now)+ '.JSON.txt'; //
-//    // --- Open the file ----
-//    AssignFile(localFile, localFileName);
-//    Rewrite(localFile);
-//    // --- add appropriate line breaks for easy reading ---
-//    sTmp := FormatV2APIResponse(sData);
-//    // --- finish -----------
-//    write(localFile, sTmp);
-//    CloseFile(localFile);
-//  except
-//    On E : Exception do begin
-//      if SuperUser then begin
-//        mDlg('Unable to save JSON data to file' + CR //
-//          + localFileName + CR //
-//          + 'Error Message: ' + E.Message + CR //
-//          + '(click OK to continue.)', mtError, [mbOK], 0);
-//      end; // if
-//    end; // on E
-//  end; // try...except
-//end; // SaveJSONdata
 
 
 // ----------------------------------------------
@@ -431,7 +406,7 @@ begin
   inherited;
   if TradeLogFile = nil then exit;
   if bIsLinked then begin
-    DeleteBrokerLink(v2ClientToken, sClientName, sPassivBrokerId); //
+    DeleteAllBrokerLinks(v2ClientToken, sClientName, sBrokerName);
     bIsLinked := false;
     btnUnlink.Enabled := false;
     SetupCboPlaid;

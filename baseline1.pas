@@ -195,7 +195,7 @@ implementation
 
 uses
   TLCommonLib, TLSettings, funcProc, Main, TLregister, import, TLFile,
-  TLEndYear, selImpMethod,
+  TLEndYear, selImpMethod, TLDateUtils,
   globalVariables, recordClasses, baseline, activex, MSHTML, dateUtils, StrUtils;
 
 const
@@ -205,7 +205,7 @@ var
   moreOpens, noTradesImported: boolean;
   blStep: integer;
   fromDateTxt, toDateTxt, openPosFileName : string;
-  lastDayOfYear : TDate;
+  lastDayOfYear, blLastBizDate : TDate;
 
 // ------------------------------------
 function cDlg(CONST Msg: string; DlgTypt: TmsgDlgType; button: TMsgDlgButtons;
@@ -914,7 +914,16 @@ end;
 
 
 procedure TpnlBaseline1.doStep;
+var
+  sTmp : string;
 begin
+  // --- last biz date ------
+  blLastBizDate := xStrToDate('12/31/' + lastTaxyear, Settings.InternalFmt);
+  while (DayOfWeek(blLastBizDate) in [1, 7]) //
+  or TTLDateUtils.IsHoliday(blLastBizDate) do begin
+    blLastBizDate := IncDay(blLastBizDate, -1);
+  end; // while
+  // ------------------------
   if (blStep = 0) then begin
     if (blPositionsCnt > 0)
     or (cxGrid1TableView1.DataController.RecordCount > 0) then begin
@@ -980,7 +989,8 @@ begin
     lblStep.Caption := 'Step 2: Enter ';
     lblStepa.Caption := 'Holdings as of December 31, ';
     btnLast.Enabled := true;
-    btnNext.Enabled := false; // disable until Add click - 2016-04-14 MB
+    btnNext.Enabled := (blPositionsCnt > 0); // 2025-10-24 MB Allow Next if positions exist
+    // false; // disable until Add click - 2016-04-14 MB
     lblLastYear.Caption := lastTaxYear;
     pnlStep1.Hide;
     pnlStep3.Hide;
@@ -1028,14 +1038,21 @@ begin
     pnlStep3.Height := 180;
     fromDateTxt := dateToStr(blFromDate,Settings.UserFmt);
     toDateTxt := dateToStr(blToDate,Settings.UserFmt);
-    if (blToDate = xStrToDate('12/31/'+lastTaxyear,Settings.InternalFmt))
+    // ----------------------
+    if (blToDate = blLastBizDate) //
+    or (blToDate = xStrToDate('12/31/'+lastTaxyear, Settings.InternalFmt)) //
     or noTradesImported then begin
+      sTmp := 'two trading days';
+      if StrToInt(TaxYear) < 2018 then
+        sTmp := 'three trading days'
+      else if StrToInt(TaxYear) > 2024 then
+        sTmp := 'trading day';
       lblStep.Caption := 'Step 3: Accounting for Trades Pending Settlement';
-      loadHTML(wbStep3,'<ul><li>TradeLog will automatically adjust the list of open positions for "Trades Pending Settlement"'+
-        ' - those made on the last three trading days of the year.</li>'+
-        '<li>Click the Import button at the right to download and import trades using the following date range:</li></ul>'+
-        '<p style="width:220px;Text-align:right">From Date = <b>'+fromDateTxt+'</b><br>'+cr+
-        '  To Date = <b>'+toDateTxt+'</b></p>');
+      loadHTML(wbStep3,'<ul><li>TradeLog will automatically adjust the list of open positions for "Trades Pending Settlement"' +
+        ' - those made on the last ' + sTmp + ' of the year.</li>' +
+        '<li>Click the Import button at the right to download and import trades using the following date range:</li></ul>' +
+        '<p style="width:220px;Text-align:right">From Date = <b>' + fromDateTxt + '</b><br>' + cr +
+        '  To Date = <b>' + toDateTxt + '</b></p>');
       SaveOpenPos;
     end
     else begin
@@ -1130,12 +1147,6 @@ begin
 end;
 
 
-//procedure TpnlBaseline1.btnNothingClick(Sender: TObject);
-//begin
-//  close;
-//end;
-
-
 procedure TpnlBaseline1.bntRemoveClick(Sender: TObject);
 begin
   with cxGrid1TableView1.DataController do begin
@@ -1212,8 +1223,9 @@ end;
 
 procedure TpnlBaseline1.btnImportClick(Sender: TObject);
 var
-  i, j: Integer;
-  Shares: double;
+  i, j : Integer;
+  Shares : double;
+  dtPending : TDate;
 begin
   if OneYrLocked //
   or isAllBrokersSelected //
@@ -1250,6 +1262,7 @@ begin
   if impCancelled then exit;
   // sm(dateToStr(settlementStartDate(lastDayOfYear))+cr+dateToStr(lastDayOfYear));
   // adjust the open positions list for unsettled trades
+  dtPending := settlementStartDate(lastDayOfYear);
   // ----------------------------------
   // Find the price paid for open pos.
   // ----------------------------------
@@ -1257,12 +1270,27 @@ begin
     // continue if trade date not last 3 trading days of year,
     // or last day of year for options
     if (impTrades[i].dt = '') // 2014-04-14 fixed crash when no date
-    or ((pos('OPT', impTrades[i].prf)= 0)
-     and (xStrToDate(impTrades[i].dt, Settings.UserFmt) < settlementStartDate(lastDayOfYear)))
-    or ((pos('OPT', impTrades[i].prf)= 1)
-     and (xStrToDate(impTrades[i].dt, Settings.UserFmt) < lastDayOfYear))
-    or (xStrToDate(impTrades[i].dt, Settings.UserFmt) > lastDayOfYear)
     then continue;
+    //
+    if ((pos('OPT', impTrades[i].prf)= 0)
+    and (xStrToDate(impTrades[i].dt, Settings.UserFmt) < dtPending))
+    then begin
+//      sm('before settlement start date');
+      continue;
+    end;
+    //
+    if ((pos('OPT', impTrades[i].prf)= 1)
+    and (xStrToDate(impTrades[i].dt, Settings.UserFmt) < blLastBizDate)) // 2025-10-28 MB
+    then begin
+//      sm('before last business day of year');
+      continue;
+    end;
+    //
+    if (xStrToDate(impTrades[i].dt, Settings.UserFmt) > lastDayOfYear)
+    then begin
+//      sm('after last day of year');
+      continue;
+    end;
     // add or subtract from shares open
     j := 0;
     if pnlBaseline1.cxGrid1TableView1.DataController.RecordCount > 0 then begin
@@ -1349,7 +1377,7 @@ begin
         appendRecord;
         values[RecordCount - 1, 1] := 'O';
         // 2014-07-15  crap hack for Schwab
-        if (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab')
+        if (TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab')
         and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L') then
           values[RecordCount - 1, 2] := 'S'
         else
@@ -1408,15 +1436,18 @@ begin
         continue; // skip records with blank trade date.
       end;
       Trade := TTLTrade.Create(impTrades[i]);
-      // skip if ticker deos not match or price = 0;
-      if (tickList.IndexOf(impTrades[i].tk) = -1) or (impTrades[i].pr = 0) then
+      // skip if ticker does not match OR price = 0;
+      if (tickList.IndexOf(impTrades[i].tk) = -1) //
+      or (impTrades[i].pr = 0) then begin
         continue;
-      if (impTrades[i].OC = 'O')
-      or ( TradeLogFile.CurrentAccount.AutoAssignShorts
-        and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L')
-      ) or ( (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab')
-        and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L')
-      ) then begin
+      end;
+      //
+      if (impTrades[i].OC = 'O') //
+      or ( TradeLogFile.CurrentAccount.AutoAssignShorts //
+       and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L')) //
+      or ( (TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab')
+       and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L')) //
+      then begin
         j := 0;
         with cxGrid1TableView1.DataController do
           while j < cxGrid1TableView1.DataController.RecordCount do begin
@@ -1432,19 +1463,22 @@ begin
               continue;
             end;
             // updated 2014-09-22 from crap Schwab short buys
-            if ( (values[j, 2] = impTrades[i].ls) and (impTrades[i].OC = 'O') )
-            or ( (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab')
-              and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L')
-              and (values[j, 2] = 'S') ) // AutoAssignShorts
-            or (TradeLogFile.CurrentAccount.AutoAssignShorts
-              and (values[j, 2] = 'S') and (impTrades[i].OC = 'C')
-              and (impTrades[i].ls = 'L') )
+            if ( (values[j, 2] = impTrades[i].ls) and (impTrades[i].OC = 'O') )  //
+            or ( (TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab') //
+             and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L') //
+             and (values[j, 2] = 'S') ) // AutoAssignShorts //
+            or (TradeLogFile.CurrentAccount.AutoAssignShorts //
+             and (values[j, 2] = 'S') and (impTrades[i].OC = 'C') //
+             and (impTrades[i].ls = 'L') ) //
             then begin
               if (values[j, 4] = impTrades[i].sh) then begin
-                if (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab')
-                and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L') and (values[j, 2] = 'S')
-                or ( (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L')
-                and TradeLogFile.CurrentAccount.AutoAssignShorts) then begin
+                if (TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab') //
+                and (impTrades[i].OC = 'C') //
+                and (impTrades[i].ls = 'L') //
+                and (values[j, 2] = 'S') //
+                or ( (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L') //
+                and TradeLogFile.CurrentAccount.AutoAssignShorts ) //
+                then begin
                   Trade.OC := 'O';
                   Trade.ls := 'S';
                 end;
@@ -1457,10 +1491,13 @@ begin
               end
               else if (values[j, 4] > impTrades[i].sh) then begin
                 // Trade := TTLTrade.Create(ImpTrades[i]);
-                if (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab')
-                and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L') and (values[j, 2] = 'S')
-                or ( (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L')
-                and TradeLogFile.CurrentAccount.AutoAssignShorts) then begin
+                if (TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab') //
+                and (impTrades[i].OC = 'C') //
+                and (impTrades[i].ls = 'L') //
+                and (values[j, 2] = 'S') //
+                or ( (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L') //
+                and TradeLogFile.CurrentAccount.AutoAssignShorts ) //
+                then begin
                   Trade.OC := 'O';
                   Trade.ls := 'S';
                 end;
@@ -1471,10 +1508,13 @@ begin
               end
               else if (values[j, 4] < impTrades[i].sh) then begin
                 // Trade := TTLTrade.Create(ImpTrades[i]);
-                if (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab')
-                and (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L') and (values[j, 2] = 'S')
-                or ( (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L')
-                and TradeLogFile.CurrentAccount.AutoAssignShorts) then begin
+                if (TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab') //
+                and (impTrades[i].OC = 'C') //
+                and (impTrades[i].ls = 'L') //
+                and (values[j, 2] = 'S') //
+                or ( (impTrades[i].OC = 'C') and (impTrades[i].ls = 'L') //
+                and TradeLogFile.CurrentAccount.AutoAssignShorts) //
+                then begin
                   Trade.OC := 'O';
                   Trade.ls := 'S';
                 end;
@@ -1541,7 +1581,7 @@ begin
     if (blPositionsCnt = -1) then
       sm('Baseline Wizard was not completed.' + cr //
         + cr //
-        + '  You must complete the wizard or manually enter your basleine positions' + cr //
+        + '  You must complete the wizard or manually enter your baseline positions' + cr //
         + '  before you begin importing your trade history for ' + taxYear + '.')
     else if (blPositionsCnt > 0) then
       sm('Baseline positions are complete.' + cr //
@@ -1600,15 +1640,17 @@ begin
             if (pos('Date ', msgTxt)= 0) then
               msgTxt := msgTxt + '- Date cannot be blank.' + cr
             else if not checkDate(values[i, 0]) and (pos('Date ', msgTxt)= 0) then
-              msgTxt := '- Date must be less than: ' + dateToStr(settlementStartDate(lastDayOfYear),
-                Settings.InternalFmt)+ cr;
+              msgTxt := '- Date must be less than: ' //
+              + dateToStr(settlementStartDate(lastDayOfYear), Settings.InternalFmt)+ cr;
+          //
           if ((values[i, 5] = '0') or (values[i, 5] = null)) and (pos('Price ', msgTxt)= 0) then
             if (pos('Price ', msgTxt)= 0) then
               msgTxt := msgTxt + '- Price cannot be zero or blank.' + cr;
-
+          //
           if ((values[i, 8] = '0') or (values[i, 8] = null)) and (pos('Amount ', msgTxt)= 0) then
             if (pos('Amount ', msgTxt)= 0) then
               msgTxt := msgTxt + '- Amount cannot be zero or blank.' + cr;
+          //
         end; // with cxGrid1TableView1.DataController
       end; // for i
     end; // if not zero
@@ -1688,12 +1730,12 @@ begin
         values[recordCount-1,4] := trim(parseFirst(openPosStr,tab));
         values[recordCount-1,6] := trim(openPosStr);
       end;
-      btnNext.Enabled := true; // 2017-02-16 MB - enable NEXT after RESTORE LIST.
     end;
   finally
     CloseFile(openPosFile);
     blPositionsCnt := cxGrid1TableView1.DataController.RecordCount;
-    btnGetOpenPos.Hide;
+    btnNext.Enabled := (blPositionsCnt > 0); // 2025-10-24 MB - enable NEXT if RESTORE successful.
+    btnGetOpenPos.Hide; // ...and then hide the RESTORE button.
   end;
 end;
 

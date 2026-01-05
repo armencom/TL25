@@ -132,6 +132,7 @@ type
     procedure btnAddClick(Sender: TObject);
     procedure Button1Click(Sender: TObject);
   private
+    procedure SaveData;
     procedure UpdateSymbolCount;
     function TableRowCount(tbl: string): integer;
     procedure SetupScript(tbl: integer);
@@ -675,7 +676,7 @@ begin
       Screen.Cursor := crDefault;
     end;
     Result := showModal;
-//    if Result = mrOk then SaveData;
+    if Result = mrOk then SaveData;
   end;
 end;
 
@@ -694,4 +695,22 @@ begin
   end;
 end;
 
+procedure TfrmOptionDlg.SaveData;
+begin
+  Settings.DispSupportCenter := false; // cbShowSupportCenter.Checked;
+  Settings.DispQuickTour := false; // chkQuickTour.Checked;
+  Settings.DispAcct := chkAcct.checked;
+  Settings.DispImport := false; // chkImportFilter.Checked;
+  Settings.DispMTaxLots := chkMTaxLots.Checked;
+  Settings.DispNotes := chkNotes.Checked;
+  Settings.DispOptTicks := chkOptTicks.Checked;
+  Settings.DispQS := chkQS.Checked;
+  Settings.DispStrategies := chkStrategies.Checked;
+  Settings.DispTimeBool := chkTime.checked;
+  Settings.DispWSdefer := chkWSdefer.checked;
+  Settings.Disp8949Code := chk8949Code.Checked;
+  Settings.DispWSHolding := ckWSHoldingDate.Checked;
+  Settings.LegacyBC := chkLegacyBC.Checked; // 2022-01-20 MB New
+  frmMain.SetupToolBarMenuBar(false); // 2022-01-24 MB
+end;
 end.

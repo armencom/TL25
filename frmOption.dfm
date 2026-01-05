@@ -24,8 +24,6 @@ object frmOptionDlg: TfrmOptionDlg
     Height = 41
     Align = alBottom
     TabOrder = 0
-    ExplicitTop = 405
-    ExplicitWidth = 475
     object btnCancel: TButton
       Left = 323
       Top = 1
@@ -121,6 +119,9 @@ object frmOptionDlg: TfrmOptionDlg
       Margins.Bottom = 2
       Caption = 'Global'
       ImageIndex = 1
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
       ExplicitHeight = 355
       object lblCtrlW: TLabel
         Left = 270
@@ -412,6 +413,9 @@ object frmOptionDlg: TfrmOptionDlg
       Margins.Right = 2
       Margins.Bottom = 2
       Caption = 'Broad-Based Index Options'
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
       ExplicitHeight = 355
       object grdBBIO: TcxGrid
         Left = 18
@@ -491,6 +495,9 @@ object frmOptionDlg: TfrmOptionDlg
       Margins.Bottom = 2
       Caption = 'Futures'
       ImageIndex = 3
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
       ExplicitHeight = 355
       object grdFutures: TcxGrid
         Left = 18
@@ -567,6 +574,9 @@ object frmOptionDlg: TfrmOptionDlg
       Margins.Bottom = 2
       Caption = 'Strategy Setup'
       ImageIndex = 4
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
       ExplicitHeight = 355
       object grdStrategy: TcxGrid
         Left = 18
@@ -627,6 +637,9 @@ object frmOptionDlg: TfrmOptionDlg
     object tabMutFunds: TTabSheet
       Caption = 'Mutual Funds'
       ImageIndex = 4
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
       ExplicitHeight = 355
       object grdMut: TcxGrid
         Left = 18
@@ -667,7 +680,6 @@ object frmOptionDlg: TfrmOptionDlg
     object TabETNs: TTabSheet
       Caption = 'ETF/ETN'
       ImageIndex = 5
-      ExplicitHeight = 355
       DesignSize = (
         450
         378)

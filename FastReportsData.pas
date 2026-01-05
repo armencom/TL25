@@ -1947,8 +1947,7 @@ begin
   // differences between 2011 and newer versions
   if TradeLogFile.TaxYear = 2011 then begin
     ReportToUse := rpt8949_2011;
-    ReportToUse.Pages[3].Visible := (tradeLogFile.TaxYear <= 2012) //
-      and not frmMain.cbForm8949pdf.Checked;
+    ReportToUse.Pages[3].Visible := (tradeLogFile.TaxYear <= 2012); // and not frmMain.cbForm8949pdf.Checked;
     ReportToUse.Pages[4].Visible := frmMain.cbIncludeAdjustment.Checked;
   end
   // select the appropriate tax form
@@ -1974,16 +1973,14 @@ begin
     end;
     // show/hide parts which do/don't apply
     if (tradeLogFile.TaxYear <= 2013) then begin
-      ReportToUse.Pages[3].Visible := (tradeLogFile.TaxYear <= 2012)
-        and not frmMain.cbForm8949pdf.Checked;
-      ReportToUse.Pages[4].Visible := (tradeLogFile.TaxYear > 2012)
-        and not frmMain.cbForm8949pdf.Checked;
+      ReportToUse.Pages[3].Visible := (tradeLogFile.TaxYear <= 2012); // and not frmMain.cbForm8949pdf.Checked;
+      ReportToUse.Pages[4].Visible := (tradeLogFile.TaxYear > 2012); // and not frmMain.cbForm8949pdf.Checked;
       ReportToUse.Pages[5].Visible := frmMain.cbIncludeAdjustment.Checked;
       ReportToUse.Pages[6].Visible := frmMain.cbIncludeStatement.Checked;
     end
     else begin
       // 2025-08-07 MB - changed so Summary not visible if "Create 8949 PDF" is checked.
-      ReportToUse.Pages[nSummaryPage].Visible := IncSummary and not frmMain.cbForm8949pdf.Checked;
+      ReportToUse.Pages[nSummaryPage].Visible := IncSummary; // and not frmMain.cbForm8949pdf.Checked;
       ReportToUse.Pages[4].Visible := frmMain.cbIncludeStatement.Checked;
     end;
   end;
@@ -2040,20 +2037,20 @@ begin
     ReportToUse.Variables.Variables['STAdjC'] := QuotedStr(CurrStrEx(gSTadjC, Settings.UserFmt, false, false, 0));
     ReportToUse.Variables.Variables['STTotalC'] := QuotedStr(CurrStrEx(gSTprofC + gSTadjC, Settings.UserFmt, false, false, 0));
     // ----- Long Term -----
-    ReportToUse.Variables.Variables['LTSalesA'] := QuotedStr(CurrStrEx(gLTsalesA, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTCostA'] := QuotedStr(CurrStrEx(gLTcostA, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTAdjA'] := QuotedStr(CurrStrEx(gLTadjA, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTTotalA'] := QuotedStr(CurrStrEx(gLTprofA + gLTadjA, Settings.UserFmt, true, false, 0));
+    ReportToUse.Variables.Variables['LTSalesA'] := QuotedStr(CurrStrEx(gLTsalesA, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTCostA'] := QuotedStr(CurrStrEx(gLTcostA, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTAdjA'] := QuotedStr(CurrStrEx(gLTadjA, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTTotalA'] := QuotedStr(CurrStrEx(gLTprofA + gLTadjA, Settings.UserFmt, false, false, 0));
     // -----
-    ReportToUse.Variables.Variables['LTSalesB'] := QuotedStr(CurrStrEx(gLTsalesB, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTCostB'] := QuotedStr(CurrStrEx(gLTcostB, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTAdjB'] := QuotedStr(CurrStrEx(gLTadjB, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTTotalB'] := QuotedStr(CurrStrEx(gLTprofB + gLTadjB, Settings.UserFmt, true, false, 0));
+    ReportToUse.Variables.Variables['LTSalesB'] := QuotedStr(CurrStrEx(gLTsalesB, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTCostB'] := QuotedStr(CurrStrEx(gLTcostB, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTAdjB'] := QuotedStr(CurrStrEx(gLTadjB, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTTotalB'] := QuotedStr(CurrStrEx(gLTprofB + gLTadjB, Settings.UserFmt, false, false, 0));
     // -----
-    ReportToUse.Variables.Variables['LTSalesC'] := QuotedStr(CurrStrEx(gLTsalesC, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTCostC'] := QuotedStr(CurrStrEx(gLTcostC, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTAdjC'] := QuotedStr(CurrStrEx(gLTadjC, Settings.UserFmt, true, false, 0));
-    ReportToUse.Variables.Variables['LTTotalC'] := QuotedStr(CurrStrEx(gLTprofC + gLTadjC, Settings.UserFmt, true, false, 0));
+    ReportToUse.Variables.Variables['LTSalesC'] := QuotedStr(CurrStrEx(gLTsalesC, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTCostC'] := QuotedStr(CurrStrEx(gLTcostC, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTAdjC'] := QuotedStr(CurrStrEx(gLTadjC, Settings.UserFmt, false, false, 0));
+    ReportToUse.Variables.Variables['LTTotalC'] := QuotedStr(CurrStrEx(gLTprofC + gLTadjC, Settings.UserFmt, false, false, 0));
   end;
   // -----
   // Dont want margin settings to affect this report.

@@ -932,7 +932,7 @@ begin
   Settings.DispWSdefer := chkWSdefer.checked;
   Settings.Disp8949Code := chk8949Code.Checked;
   Settings.DispWSHolding := ckWSHoldingDate.Checked;
-  Settings.LegacyBC := chkLegacyBC.Checked; // 2022-01-20 MB New
+//  Settings.LegacyBC := chkLegacyBC.Checked; // 2022-01-20 MB New
   frmMain.SetupToolBarMenuBar(false); // 2022-01-24 MB
   SaveFutureList;
   SaveBBIndexList;
@@ -963,7 +963,7 @@ begin
       chkQS.checked:= Settings.DispQS;
       chk8949Code.Checked := Settings.Disp8949Code;
       ckWSHoldingDate.Checked := Settings.DispWSHolding;
-      chkLegacyBC.Checked := Settings.LegacyBC; // 2022-01-20 MB New
+//      chkLegacyBC.Checked := Settings.LegacyBC; // 2022-01-20 MB New
       try
         sErrLocus := 'Load Broad-Based Index List';
         LoadBBIndexListBox;

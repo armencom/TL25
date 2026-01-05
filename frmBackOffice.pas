@@ -278,11 +278,12 @@ end;
 
 procedure TdlgBackOffice.btnSearchClick(Sender: TObject);
 var
-  sEmail : string;
+  sEmail, s : string;
 begin
   ClearForm;
   sEmail := trim(edEmailAddr.Text);
-  sUnitToken := Impersonate(sEmail);
+  s := Impersonate(sEmail); // save for later
+  sUnitToken := s;
   if (pos('ERROR', sUnitToken) > 0) //
   or (pos('message', sUnitToken) > 0) //
   then begin

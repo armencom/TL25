@@ -25,7 +25,9 @@ function DeletePassivClient(sUserToken, sClientName : string): string;
 // Passiv -> broker_link
 function GetPassivBrokerLink(sUserToken, sClientName : string): string;
 procedure LaunchPassivLink(sData, sClientName : string);
+
 procedure DeleteBrokerLink(sUserToken, sClientName, sBroker : string);
+procedure DeleteAllBrokerLinks(sUserToken, sClientName, sBroker : string); // used in ImportSetup
 
 // Passiv -> brokers
 function GetPassivBrokerId(sToken, sName, sBroker : string): string;
@@ -431,6 +433,7 @@ begin
       + '","broker": "' + sBroker //
       + '"}';
     sData := postData;
+//    exit; // for debugging
     // ----------------------------------------------------
     sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
     s := trim(postData);
@@ -460,6 +463,50 @@ begin
     postHead.Free;
   end;
 end; //
+
+procedure DeleteAllBrokerLinks(sUserToken, sClientName, sBroker : string); // used in ImportSetup
+var
+  ii, jj : integer;
+  sTmp, sBrokerId, sJSON, ss : string;
+  BrokerLst, lineLst : TStrings;
+begin
+  bBrokerDisabled := false; // 2025-03-13 MB - clear before testing
+  sTmp := GetListPassivBrokers(sUserToken, sClientName);
+  //  [
+  //   {
+  //    "id":"f0bf458f-3bdf-4550-b885-28fcb367ae9e", <-- lineLst[0] = id
+  //    "name":"Webull", <-- lineLst[3] = sBroker
+  //    "slug":"WEBULL",
+  //    "disabled":false,
+  //    "disabled_date":null
+  //   },
+  //   {
+  //    "id":"b876a7dc-c5a6-4966-9503-c900553a4f2c",
+  //    "name":"Fidelity",
+  //    "slug":"FIDELITY",
+  //    "disabled":false,
+  //    "disabled_date":null
+  //   }
+  //  ]
+  sJSON := ParseBetween(sTmp, '[', ']'); // because API returns '[[r1],[r2]]'
+  //
+  if leftstr(sJSON,1) = '[' then
+    BrokerLst := ParseJSON(sJSON, '[', ']')
+  else
+    BrokerLst := ParseJSON(sJSON, '{', '}');
+  if BrokerLst = nil then exit;
+  if BrokerLst.Count < 1 then exit;
+  // ------------------------
+  for ii := 0 to BrokerLst.Count-1 do begin
+    ss := BrokerLst[ii];
+    lineLst := ParseV2APIResponse(ss);
+    if (lineLst.Count < 10) then exit;
+    if lineLst[3] = sBroker then begin // 2025-10-10 MB - used to match sPassivBrokerId
+      sBrokerId := lineLst[1];
+      DeleteBrokerLink(sUserToken, sClientName, sBrokerId);
+    end;
+  end;
+end;
 
 
 procedure LaunchPassivLink(sData, sClientName : string);
@@ -1028,7 +1075,6 @@ begin
     postHead := TStringStream.Create('');
     with postHead do begin
       WriteString('api: ' + API_KEY + sLineBreak);
-//      WriteString('api: de835869ae0fb9413f207482f4b4d47a19810c2c7171f4a0351ca02fc7fc4eec' + sLineBreak); // dev
       WriteString('Content-Type: application/json' + sLineBreak);
       WriteString('charset: utf-8' + sLineBreak);
     end;
@@ -1079,7 +1125,6 @@ begin
     postHead := TStringStream.Create('');
     with postHead do begin
       WriteString('api: ' + API_KEY + sLineBreak);
-//      WriteString('api: de835869ae0fb9413f207482f4b4d47a19810c2c7171f4a0351ca02fc7fc4eec' + sLineBreak); // dev
       WriteString('Content-Type: application/json' + sLineBreak);
       WriteString('charset: utf-8' + sLineBreak);
     end;

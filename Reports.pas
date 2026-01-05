@@ -1578,8 +1578,9 @@ begin
             IncludeAdjustment)
 
         end
-        else
+        else begin
           dataFastReports.RunIRSD1Report;
+        end;
         exit;
       end
       // Gains & Losses report

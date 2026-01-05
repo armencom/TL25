@@ -308,8 +308,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","password" : "' + sPwd + '"}';
+    postData := '{"password" : "' + sPwd + '"}';
     // ----------------------------------------------------
     sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
     if Developer then begin
@@ -522,8 +521,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","Email" : "' + sEmail //
+    postData := '{"Email" : "' + sEmail //
       + '","Password" : "' + sPwd //
       + '","version" : "' + gsVersion //
       + '"}';
@@ -603,7 +601,9 @@ begin
     // --- check response for error -------------
     sReply := uppercase(postData);
     if (POS('"RESULT":"ERROR"', sReply) > 0) //
-    or (POS('"STATUS":"ERROR"', sReply) > 0) then begin
+    or (POS('"STATUS":"ERROR"', sReply) > 0) //
+//    or (POS('"MESSAGE":"UNEXPECTED TOKEN', sReply) > 0) //
+    then begin
       v2LoginPostMsg := 'ERROR: ' + FormatV2APIResponse(postData); //
       gbOffline := false;
       bCancelLogin := true;
@@ -693,8 +693,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","UserToken": "' + sUserToken + '"}';
+    postData := '{"UserToken": "' + sUserToken + '"}';
     sData := postData;
     // ----------------------------------------------------
     sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
@@ -786,8 +785,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","UserToken": "' + sUserToken + '"}';
+    postData := '{"UserToken": "' + sUserToken + '"}';
     // ----------------------------------------------------
     sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
     s := uppercase(postData);
@@ -852,8 +850,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","UserToken": "' + sUserToken //
+    postData := '{"UserToken": "' + sUserToken //
       + '","Name" : "' + sName //
       + '","Email" : "' + sEmail //
       + '","Password" : "' + sPwd + '"}';
@@ -914,8 +911,7 @@ end; // ManageUsers
 //      WriteString('charset: utf-8' + sLineBreak);
 //    end;
 //    // ----------------------------------------------------
-//    postData := '{"api_key":"' + GetAPIKey //
-//      + '","UserToken": "' + sUserToken + '"}';
+//    postData := '{"UserToken": "' + sUserToken + '"}';
 //    // ----------------------------------------------------
 //    sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
 //    if Developer then begin
@@ -1035,8 +1031,7 @@ end; // ManageUsers
 //      WriteString('charset: utf-8' + sLineBreak);
 //    end;
 //    // ----------------------------------------------------
-//    postData := '{"api_key":"' + GetAPIKey //
-//      + '","UserToken" : "' + sUserToken //
+//    postData := '{"UserToken" : "' + sUserToken //
 //      + '","Name" : "' + sName + '"' //
 //      + '","Email" : "' + sEmail //
 //      + '","Password" : "' + sPwd + '"}';
@@ -1101,9 +1096,9 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","UserToken": "' + sUserToken + '"}';
+    postData := '{"UserToken": "' + sUserToken + '"}';
     // ----------------------------------------------------
+    sData := postData; // save for troubleshooting
     sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
 //    if Developer then begin
 //      clipboard.AsText := leftstr(postData, 800);
@@ -1150,8 +1145,7 @@ end; // ListFileKeys
 //      WriteString('charset: utf-8' + sLineBreak);
 //    end;
 //    // ----------------------------------------------------
-//    postData := '{"api_key":"' + GetAPIKey //
-//      + '","UserToken": "' + sUserToken + '"}';
+//    postData := '{"UserToken": "' + sUserToken + '"}';
 //    // ----------------------------------------------------
 //    sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
 //    if Developer then begin
@@ -1272,7 +1266,6 @@ end;
 
 // updated documentation:
 // {
-//  "api":"<api_key>",
 //  "UserToken": "<userToken>",
 //  "Email":"<userEmail-matches Token>",
 //  "FileCode":"<FileKeyId-matches Token>",
@@ -1307,8 +1300,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api":"' + GetAPIKey //
-      + '","UserToken": "' + sUserToken + '"'
+    postData := '{"UserToken": "' + sUserToken + '"'
       + ',"Email":"' + sEmail + '"'
       + ',"FileCode":"' + sFileCode + '"'
       + ',"FileName":"' + sFileName + '"'
@@ -1608,8 +1600,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api":"' + GetAPIKey //
-      + '","UserToken": "' + v2UserToken + '"'
+    postData := '{"UserToken": "' + v2UserToken + '"'
       + ',"Old_Email":"' + sOldEmail //
       + '","New_Email":"' + sNewEmail //
       + '"}';
@@ -1682,8 +1673,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api":"' + GetAPIKey //
-      + '","UserToken": "' + v2UserToken + '"'
+    postData := '{"UserToken": "' + v2UserToken + '"'
       + ',"Email":"' + sEmail //
       + '","FreeFileKey":"' + sFreeFileKey + '"}';
     // ----------------------------------------------------
@@ -1741,8 +1731,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api":"' + GetAPIKey //
-      + '","UserToken": "' + sUserToken + '"'
+    postData := '{"UserToken": "' + sUserToken + '"'
       + ',"Email":"' + sEmail + '"'
       + ',"FileCode":"' + sFileCode + '"'
       + '}';
@@ -1815,8 +1804,7 @@ end; // SuperDeleteFileKey
 //      WriteString('charset: utf-8' + sLineBreak);
 //    end;
 //    // ----------------------------------------------------
-//    postData := '{"api_key":"' + GetAPIKey //
-//      + '","UserToken": "' + sUserToken + '"}';
+//    postData := '{"UserToken": "' + sUserToken + '"}';
 //    // ----------------------------------------------------
 //    sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
 //    if POS('200 OK', sStatus)= 1 then begin
@@ -1884,8 +1872,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","UserToken": "' + sUserToken + '"}';
+    postData := '{"UserToken": "' + sUserToken + '"}';
     // ----------------------------------------------------
     sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
 // if Developer then begin
@@ -1996,8 +1983,8 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey + '"}';
-//    postData := '{"api_key":"de835869ae0fb9413f207482f4b4d47a19810c2c7171f4a0351ca02fc7fc4eec"}';
+    postData := '{}';
+//    postData := '{"api_key":"' + GetAPIKey + '"}';
     // ------------------------------------------
     sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
     // expected return:
@@ -2103,8 +2090,8 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ------------------------------------------
-    postData := '{"api":"' + GetAPIKey         //
-      + '","UserToken": "' + sUserToken + '"'  //
+    postData := '{'                            //
+      + '"UserToken": "' + sUserToken + '"'    //
       + ',"ver":"' + sVer + '"'                //
       + ',"file":"' + sFileName + '"'          //
       + ',"comments":"' + sComments + '"'      //
@@ -2175,8 +2162,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","UserToken":"' + sUserToken //
+    postData := '{"UserToken":"' + sUserToken //
       + '","year":"' + sYear //
       + '","optionroot":"' + sOptTick + '"}';
     // ----------------------------------------------------
@@ -2276,8 +2262,7 @@ begin
       WriteString('charset: utf-8' + sLineBreak);
     end;
     // ----------------------------------------------------
-    postData := '{"api_key":"' + GetAPIKey //
-      + '","UserToken":"' + sUserToken //
+    postData := '{"UserToken":"' + sUserToken //
       + '","year":"' + sYear //
       + '","ticker":"' + sTick + '"}';
     // ----------------------------------------------------

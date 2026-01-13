@@ -115,7 +115,6 @@ begin
   Application.Title := 'TradeLog';
   Application.ShowHint := true;
   Application.CreateForm(TDM, DM);
-  Application.CreateForm(TdlgLogIn, dlgLogIn);
   Application.CreateForm(TfrmMain, frmMain);
   Application.CreateForm(TmoduleHints, moduleHints);
   Application.CreateForm(TpanelSplash, panelSplash);
@@ -140,6 +139,7 @@ begin
   Application.CreateForm(TdlgInputValue, dlgInputValue);
   Application.CreateForm(TdlgExcelWarning, dlgExcelWarning);
   Application.CreateForm(TfrmGetStarted, frmGetStarted);
+  Application.CreateForm(TdlgLogIn, dlgLogIn);
   Application.CreateForm(TdlgBackOffice, dlgBackOffice);
   Application.Run;
 end.

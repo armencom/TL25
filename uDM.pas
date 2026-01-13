@@ -69,6 +69,14 @@ type
     function ReadBrokersIntoJSON : string;
 
     procedure BackUpDb(backup : string);
+
+    procedure SetParamIntOrNull(const Param: TFDParam; const Field: TField);
+    procedure SetParamBoolOrNull(const Param: TFDParam; const Field: TField);
+    procedure SetParamStrOrNull(const Param: TFDParam; const Field: TField);
+
+    function FieldAsIntOrZero(Field: TField): Integer;
+    function FieldAsBoolOrFalse(Field: TField): Boolean;
+    function FieldAsString(Field: TField): string;
   end;
 
   const url = 'https://bctest.brokerconnect.live/api/v3/configs/';
@@ -82,7 +90,31 @@ implementation
 
 {$R *.dfm}
 
-procedure SetParamIntOrNull(const Param: TFDParam; const Field: TField);
+function TDM.FieldAsIntOrZero(Field: TField): Integer;
+begin
+  if Field.IsNull then
+    Result := 0
+  else
+    Result := Field.AsInteger;
+end;
+
+function TDM.FieldAsBoolOrFalse(Field: TField): Boolean;
+begin
+  if Field.IsNull then
+    Result := False
+  else
+    Result := Field.Value;
+end;
+
+function TDM.FieldAsString(Field: TField): string;
+begin
+  if (Field = nil) or Field.IsNull then
+    Result := ''
+  else
+    Result := Field.AsString;
+end;
+
+procedure TDM.SetParamIntOrNull(const Param: TFDParam; const Field: TField);
 begin
   // Force FireDAC to treat this parameter as integer
   Param.AsInteger := 0;
@@ -94,7 +126,7 @@ begin
     Param.AsInteger := Field.AsInteger;
 end;
 
-procedure SetParamBoolOrNull(const Param: TFDParam; const Field: TField);
+procedure TDM.SetParamBoolOrNull(const Param: TFDParam; const Field: TField);
 begin
   // Force FireDAC to treat this parameter as boolean
   Param.AsBoolean := False;
@@ -105,7 +137,7 @@ begin
     Param.AsBoolean := Field.AsBoolean;
 end;
 
-procedure SetParamStrOrNull(const Param: TFDParam; const Field: TField);
+procedure TDM.SetParamStrOrNull(const Param: TFDParam; const Field: TField);
 begin
   // Force FireDAC to treat this parameter as string
   Param.AsString := '';

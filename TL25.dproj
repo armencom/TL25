@@ -978,6 +978,10 @@
             <ContainerId>RC</ContainerId>
             <Form>manifest.res</Form>
         </RcCompile>
+        <DCCReference Include="uDM.pas">
+            <Form>DM</Form>
+            <DesignClass>TDataModule</DesignClass>
+        </DCCReference>
         <DCCReference Include="TLLogging.pas"/>
         <DCCReference Include="Main.pas">
             <Form>frmMain</Form>
@@ -1155,7 +1159,6 @@
         </DCCReference>
         <DCCReference Include="AdjCodes.pas">
             <Form>dlgAdjCodes</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="dlgWashSales.pas">
             <Form>dlgWSsettings</Form>
@@ -1174,15 +1177,12 @@
         </DCCReference>
         <DCCReference Include="dlgExcelWarn.pas">
             <Form>dlgExcelWarning</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="GetStarted.pas">
             <Form>frmGetStarted</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="dlgConsolidation.pas">
             <Form>dlgConsolidate</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="TL_API.pas"/>
         <DCCReference Include="fmLogin.pas">
@@ -1190,7 +1190,6 @@
         </DCCReference>
         <DCCReference Include="frmBackOffice.pas">
             <Form>dlgBackOffice</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="Ping2.pas"/>
         <DCCReference Include="fmProgress.pas">
@@ -1199,21 +1198,14 @@
         <DCCReference Include="TL_Passiv.pas"/>
         <DCCReference Include="frmSSNEIN.pas">
             <Form>dlgSSNEIN</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <DCCReference Include="WebGet.pas">
             <Form>frmWebGet</Form>
         </DCCReference>
         <DCCReference Include="OSIdentifier.pas"/>
-        <DCCReference Include="uDM.pas">
-            <Form>DM</Form>
-            <FormType>dfm</FormType>
-            <DesignClass>TDataModule</DesignClass>
-        </DCCReference>
         <DCCReference Include="Security.pas"/>
         <DCCReference Include="frmOption.pas">
             <Form>frmOptionDlg</Form>
-            <FormType>dfm</FormType>
         </DCCReference>
         <None Include="Profiling\AQtimeModule1.aqt"/>
         <None Include="ImportFilters.cfg"/>

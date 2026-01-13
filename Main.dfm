@@ -5972,6 +5972,7 @@ object frmMain: TfrmMain
     TabOrder = 4
     TabStop = False
     object mtFile: TdxRibbonTab
+      Active = True
       Caption = 'File'
       Groups = <
         item
@@ -6103,7 +6104,6 @@ object frmMain: TfrmMain
       Index = 5
     end
     object mtUser: TdxRibbonTab
-      Active = True
       Caption = 'User'
       Groups = <
         item

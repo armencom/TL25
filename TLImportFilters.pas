@@ -257,7 +257,8 @@ var
 
 implementation
 
-uses uLKJson, Variants, Windows;
+uses uLKJson, Variants, Windows,
+uDM;
 
 function GetLocInfo(Loc: integer; InfoType: Cardinal; Len: integer): string;
 var
@@ -536,7 +537,6 @@ end;
 procedure InitializeImportFilters;
 var
   F : TResourceStream;
-  SB : TStringList;
   JSONObject : TlkJSONObject;
   Filter : TlkJSONObject;
   ImpFilter : TTLImportFilter;
@@ -545,149 +545,72 @@ var
 begin
   InitializeLocales;
   ImportFilters := TImportFilterList.Create;
-  SB := TStringList.Create;
+  var q := DM.qry.Create(Nil);
   try
-  exit;   // RJ August 27 to skip out of IMPORTFILTER error
-    F := TResourceStream.Create(HInstance, 'IMPORTFILTERS', RT_RCDATA);
-    try
-      SB.LoadFromStream(F);
-    finally
-      F.Free;
-    end;
-    if SB.Count > 0 then begin
-      JSONObject := TlkJSONObject(TLKJSON.ParseText(SB.Text));
-      if JSONObject = nil then
-        raise EImportFilterException.Create('Could not parse Import Filter Config File');
-      try
-        for I := 0 to JSONObject.Count - 1 do begin
-          Filter := JSONObject.Child[I] as TLKJSONObject;
-          ImpFilter := TTLImportFilter.Create;
-          ImpFilter.FFilterName := VarToStr(Filter.Field['FilterName'].Value);
-          ImpFilter.FListText := VarToStr(Filter.Field['ListText'].Value);
-          ImpFilter.FImportFunction := VarToStr(Filter.Field['ImportFunction'].Value);
-          ImpFilter.FAssignShortBuy := Boolean(Filter.Field['AssignShortBuy'].Value);
-          ImpFilter.FAutoAssignShorts := Boolean(Filter.Field['AutoAssignShorts'].Value);
-          // --------------------------
-          if (Filter.Field['AutoAssignShortsOptions'] <> nil) then
-            ImpFilter.FAutoAssignShortsOptions := Boolean(Filter.Field['AutoAssignShortsOptions'].Value);
-          // --------------------------
-          ImpFilter.FImportMethod := Integer(Filter.Field['ImportMethod'].Value);
-          // FastLinkable
-          if (Filter.Field['FastLinkable'] <> nil) then
-            ImpFilter.FFastLinkable := Boolean(Filter.Field['FastLinkable'].Value)
-          else
-            ImpFilter.FFastLinkable := False;
-          // --------------------------
-          ImpFilter.FBrokerCode := VarToStr(Filter.Field['BrokerCode'].Value);
-          ImpFilter.FInstitutionId := VarToStr(Filter.Field['InstitutionId'].Value); // 2022-02-16 MB
-          ImpFilter.FBrokerHasTimeOfDay := Boolean(Filter.Field['BrokerHasTime'].Value);
-          ImpFilter.FSLConvert := Boolean(Filter.Field['SLConvert'].Value);
-          ImpFilter.FInstructPage := VarToStr(Filter.Field['InstructPage'].Value);
-          // --------------------------
-          if (Filter.Field['SupportsCommission'] <> nil) then
-            ImpFilter.FSupportsCommission := Boolean(Filter.Field['SupportsCommission'].Value)
-          else
-            ImpFilter.FSupportsCommission := False;
-          // --------------------------
-          ImpFilter.FBaseCurrLCID := Integer(Filter.Field['BaseCurrLCID'].Value);
-          if (Filter.Field['SupportsFlexibleCurrency'] <> nil) then
-            ImpFilter.FSupportsFlexibleCurrency := Boolean(Filter.Field['SupportsFlexibleCurrency'].Value)
-          else
-            ImpFilter.FSupportsFlexibleCurrency := False;
-          // --------------------------
-          if (Filter.Field['SupportsFlexibleAssignment'] <> nil) then
-            ImpFilter.FSupportsFlexibleAssignment := Boolean(Filter.Field['SupportsFlexibleAssignment'].Value)
-          else
-            ImpFilter.FSupportsFlexibleAssignment := False;
-          // --------------------------
-          if (Filter.Field['ImportFileExtension'] <> nil) then
-            ImpFilter.FImportFileExtension := '.' + VarToStr(Filter.Field['ImportFileExtension'].Value)
-          else
-            ImpFilter.FImportFileExtension := '.csv';
-          // --------------------------
-          if (Filter.Field['OFXFIID'] <> nil) then
-            ImpFilter.FOFXFIID := VarToStr(Filter.Field['OFXFIID'].Value)
-          else
-            ImpFilter.FOFXFIID := '';
-          // --------------------------
-          if (Filter.Field['OFXFIOrg'] <> nil) then
-            ImpFilter.FOFXFIOrg := VarToStr(Filter.Field['OFXFIOrg'].Value)
-          else
-            ImpFilter.FOFXFIOrg := '';
-          // --------------------------
-          if (Filter.Field['OFXBrokerID'] <> nil) then
-            ImpFilter.FOFXBrokerID := VarToStr(Filter.Field['OFXBrokerID'].Value)
-          else
-            ImpFilter.FOFXBrokerID := '';
-          // --------------------------
-          if (Filter.Field['OFXURL'] <> nil) then
-            ImpFilter.FOFXURL := VarToStr(Filter.Field['OFXURL'].Value)
-          else
-            ImpFilter.FOFXURL := '';
-          // --------------------------
-          if (Filter.Field['OFXMonths'] <> nil) then
-            ImpFilter.FOFXMonths := Integer(Filter.Field['OFXMonths'].Value)
-          else
-            ImpFilter.FOFXMonths := 0;
-          // --------------------------
-          if (Filter.Field['OFXDescOrder'] <> nil) then
-            ImpFilter.FOFXDescOrder := Boolean(Filter.Field['OFXDescOrder'].Value)
-          else
-            ImpFilter.FOFXDescOrder := False;
-          // --------------------------
-          if (Filter.Field['OFXMaxMonths'] <> nil) then
-            ImpFilter.FOFXMaxMonths := Integer(Filter.Field['OFXMaxMonths'].Value)
-          else
-            ImpFilter.FOFXMaxMonths := 0;
-          // --------------------------
-          if (Filter.Field['OFXClass'] <> nil) then
-            ImpFilter.FOFXClass := VarToStr(Filter.Field['OFXClass'].Value)
-          else
-            ImpFilter.FOFXClass := 'TTLImport';
-          // --------------------------
-          if (Filter.Field['OFXDirectConnect'] <> nil) then
-            ImpFilter.FSupportsOFXConnect := Boolean(Filter.Field['OFXDirectConnect'].Value)
-          else
-            ImpFilter.FSupportsOFXConnect := False;
-          // --------------------------
-          if (Filter.Field['OFXFile'] <> nil) then
-            ImpFilter.FSupportsOFXFile := Boolean(Filter.Field['OFXFile'].Value)
-          else
-            ImpFilter.FSupportsOFXFile := False;
-          // --------------------------
-          if (Filter.Field['FixShortsOOOrder'] <> nil) then
-            ImpFilter.FFixShortsOOOrder := Boolean(Filter.Field['FixShortsOOOrder'].Value)
-          else
-            ImpFilter.FFixShortsOOOrder := False;
-          // --------------------------
-          if (Filter.Field['ForceMatchStocks'] <> nil) then
-            ImpFilter.FForceMatchStocks := Boolean(Filter.Field['ForceMatchStocks'].Value)
-          else
-            ImpFilter.FForceMatchStocks := False;
-          // --------------------------
-          if (Filter.Field['ForceMatchOptions'] <> nil) then
-            ImpFilter.FForceMatchOptions := Boolean(Filter.Field['ForceMatchOptions'].Value)
-          else
-            ImpFilter.FForceMatchOptions := False;
-          // --------------------------
-          if (Filter.Field['ForceMatchCurrencies'] <> nil) then
-            ImpFilter.FForceMatchCurrencies := Boolean(Filter.Field['ForceMatchCurrencies'].Value)
-          else
-            ImpFilter.FForceMatchCurrencies := False;
-          // --------------------------
-          if (Filter.Field['ForceMatchFutures'] <> nil) then
-            ImpFilter.FForceMatchFutures := Boolean(Filter.Field['ForceMatchFutures'].Value)
-          else
-            ImpFilter.FForceMatchFutures := False;
-          // --------------------------
-          ImportFilters.Add(ImpFilter.FilterName, ImpFilter);
-        end;
-      finally
-        JSONObject.Free;
+//  exit;   // RJ August 27 to skip out of IMPORTFILTER error
+  // 1. check for internet
+  // 2. update ImpFilter
+    with DM do begin
+      RestClient1.BaseURL := url + 'importfilters';
+      RESTRequest1.Execute;
+      q.Connection := fDB;
+
+      if (MemTable.RecordCount > 0) then begin
+        CreateImportFilters;
+        InsertIntoImportFilters;
       end;
+
+      q.SQL.Clear;
+      q.SQL.Text := 'SELECT * FROM _importFilters';
+      q.Open;
+
+      //Read data from _importfilters table
+      while not qry.EOF do
+        try
+          for I := 0 to MemTable.RecordCount - 1 do begin
+            ImpFilter := TTLImportFilter.Create;
+            ImpFilter.FFilterName := FieldAsString(q.FieldByName('FilterName'));
+            ImpFilter.FListText := FieldAsString(q.FieldByName('ListText'));
+            ImpFilter.FImportFunction := FieldAsString(q.FieldByName('ImportFunction'));
+            ImpFilter.FAssignShortBuy := FieldAsBoolOrFalse(q.FieldByName('AssignShortBuy'));
+            ImpFilter.FAutoAssignShorts := FieldAsBoolOrFalse(q.FieldByName('AutoAssignShorts'));
+            ImpFilter.FAutoAssignShortsOptions := FieldAsBoolOrFalse(q.FieldByName('AutoAssignShorts'));
+  //          ImpFilter.FImportMethod := FieldAsIntOrZero(q.FieldByName('ImportMethod'));
+  //            ImpFilter.FFastLinkable := FieldAsBoolOrFalse(q.FieldByName('FastLinkable'))
+            ImpFilter.FBrokerCode := FieldAsString(q.FieldByName('BrokerCode'));
+  //          ImpFilter.FInstitutionId := VarToStr(q.FieldByName('InstitutionId')); // 2022-02-16 MB
+            ImpFilter.FBrokerHasTimeOfDay := FieldAsBoolOrFalse(q.FieldByName('BrokerHasTime'));
+            ImpFilter.FSLConvert := FieldAsBoolOrFalse(q.FieldByName('SLConvert'));
+            ImpFilter.FInstructPage := FieldAsString(q.FieldByName('InstructPage'));
+  //            ImpFilter.FSupportsCommission := FieldAsBoolOrFalse(q.FieldByName('SupportsCommission'))
+            ImpFilter.FBaseCurrLCID := FieldAsIntOrZero(q.FieldByName('BaseCurrLCID'));
+  //            ImpFilter.FSupportsFlexibleCurrency := FieldAsBoolOrFalse(q.FieldByName('SupportsFlexibleCurrency'))
+  //            ImpFilter.FSupportsFlexibleAssignment := FieldAsBoolOrFalse(q.FieldByName('SupportsFlexibleAssignment'))
+            ImpFilter.FImportFileExtension := '.' + FieldAsString(q.FieldByName('ImportFileExtension'));
+            ImpFilter.FOFXFIID := FieldAsString(q.FieldByName('OFXFIID'));
+            ImpFilter.FOFXFIOrg := FieldAsString(q.FieldByName('OFXFIOrg'));
+            ImpFilter.FOFXBrokerID := FieldAsString(q.FieldByName('OFXBrokerID'));
+            ImpFilter.FOFXURL := FieldAsString(q.FieldByName('OFXURL'));
+            ImpFilter.FOFXMonths := FieldAsIntOrZero(q.FieldByName('OFXMonths'));
+            ImpFilter.FOFXDescOrder := FieldAsBoolOrFalse(q.FieldByName('OFXDescOrder'));
+            ImpFilter.FOFXMaxMonths := FieldAsIntOrZero(q.FieldByName('OFXMonths'));
+  //          ImpFilter.FOFXClass := FieldAsString(q.FieldByName('OFXClass'));
+            ImpFilter.FSupportsOFXConnect := FieldAsBoolOrFalse(q.FieldByName('OFXDirectConnect'));
+  //          ImpFilter.FSupportsOFXFile := FieldAsBoolOrFalse(q.FieldByName('OFXFile'));
+  //            ImpFilter.FFixShortsOOOrder := FieldAsBoolOrFalse(q.FieldByName('FixShortsOOOrder'));
+  //            ImpFilter.FForceMatchStocks := FieldAsBoolOrFalse(q.FieldByName('ForceMatchStocks'));
+  //            ImpFilter.FForceMatchOptions := FieldAsBoolOrFalse(q.FieldByName('ForceMatchOptions'));
+  //            ImpFilter.FForceMatchCurrencies := FieldAsBoolOrFalse(q.FieldByName('ForceMatchCurrencies'))
+  //            ImpFilter.FForceMatchFutures := FieldAsBoolOrFalse(q.FieldByName('ForceMatchFutures'));
+
+            ImportFilters.Add(ImpFilter.FilterName, ImpFilter);
+            q.Next;
+          end;
+        finally
+          JSONObject.Free;
+        end;
     end;
   finally
-    SB.Free;
   end;
 end;
 
@@ -869,7 +792,7 @@ end;
 
 
 Initialization
-  InitializeImportFilters;
+//  InitializeImportFilters;
 
 Finalization
   FinalizeImportFilters;

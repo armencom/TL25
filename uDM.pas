@@ -50,18 +50,23 @@ type
     function GetTableValues(const TableName: string; const Where: string = ''): TRows;
 
     procedure CreateConfigBBIO;
+    procedure CreateImportFilters;
 
     procedure InsertIntoConfigBBIO;
     procedure InsertIntoConfigETFS;
     procedure InsertIntoConfigFutures;
     procedure InsertIntoConfigMUTS;
     procedure InsertIntoConfigStrategies;
+    procedure InsertIntoImportFilters;
 
     procedure ReadIntoConfigBBIO;
     procedure ReadIntoConfigETFS;
     procedure ReadIntoConfigFutures;
     procedure ReadIntoConfigMUTS;
     procedure ReadIntoConfigStrategies;
+
+    procedure ReadBrokersIntoMemory;
+    function ReadBrokersIntoJSON : string;
 
     procedure BackUpDb(backup : string);
   end;
@@ -76,6 +81,41 @@ implementation
 {%CLASSGROUP 'Vcl.Controls.TControl'}
 
 {$R *.dfm}
+
+procedure SetParamIntOrNull(const Param: TFDParam; const Field: TField);
+begin
+  // Force FireDAC to treat this parameter as integer
+  Param.AsInteger := 0;
+
+  // Now assign NULL or the real value
+  if Field.IsNull then
+    Param.Clear
+  else
+    Param.AsInteger := Field.AsInteger;
+end;
+
+procedure SetParamBoolOrNull(const Param: TFDParam; const Field: TField);
+begin
+  // Force FireDAC to treat this parameter as boolean
+  Param.AsBoolean := False;
+
+  if Field.IsNull then
+    Param.Clear
+  else
+    Param.AsBoolean := Field.AsBoolean;
+end;
+
+procedure SetParamStrOrNull(const Param: TFDParam; const Field: TField);
+begin
+  // Force FireDAC to treat this parameter as string
+  Param.AsString := '';
+
+  if Field.IsNull then
+    Param.Clear
+  else
+    Param.AsString := Field.AsString;
+end;
+
 
 procedure TDM.CreateConfigBBIO;
 begin
@@ -153,6 +193,7 @@ procedure TDM.ReadIntoConfigBBIO;
 var
   Item: TListItem;
 begin
+
 (*
   FDConnection1.Connected := True;
 
@@ -321,5 +362,122 @@ procedure TDM.SSHClientServerKeyValidate(Sender: TObject; NewServerKey: TScKey;
 begin
   Accept := true;
 end;
+
+procedure TDM.InsertIntoImportFilters;
+var
+  Q: TFDQuery;
+begin
+  Q := TFDQuery.Create(nil);
+  try
+    Q.Connection := fDB;
+    MemTable.First;
+    while not MemTable.Eof do
+    begin
+      Q.SQL.Text :=
+        'INSERT INTO _importFilters (' +
+        ' FilterName, ListText, ImportFunction, AssignShortBuy, AutoAssignShorts,' +
+        ' ImportMethod, BaseCurrLCID, BrokerCode, BrokerHasTime, SLConvert,' +
+        ' InstructPage, OFXDirectConnect, OFXFIID, OFXFIOrg, OFXBrokerID,' +
+        ' OFXURL, OFXMonths, OFXMaxMonths, OFXDescOrder, ImportFileExtension' +
+        ') VALUES (' +
+        ' :FilterName, :ListText, :ImportFunction, :AssignShortBuy, :AutoAssignShorts,' +
+        ' :ImportMethod, :BaseCurrLCID, :BrokerCode, :BrokerHasTime, :SLConvert,' +
+        ' :InstructPage, :OFXDirectConnect, :OFXFIID, :OFXFIOrg, :OFXBrokerID,' +
+        ' :OFXURL, :OFXMonths, :OFXMaxMonths, :OFXDescOrder, :ImportFileExtension' +
+        ');';
+
+      // Assign values
+      SetParamStrOrNull(Q.ParamByName('FilterName'), MemTable.FieldByName('FilterName'));
+      SetParamStrOrNull(Q.ParamByName('ListText'), MemTable.FieldByName('ListText'));
+      SetParamStrOrNull(Q.ParamByName('ImportFunction'), MemTable.FieldByName('ImportFunction'));
+      SetParamStrOrNull(Q.ParamByName('BrokerCode'), MemTable.FieldByName('BrokerCode'));
+      SetParamStrOrNull(Q.ParamByName('InstructPage'), MemTable.FieldByName('InstructPage'));
+      SetParamStrOrNull(Q.ParamByName('OFXFIID'), MemTable.FieldByName('OFXFIID'));
+      SetParamStrOrNull(Q.ParamByName('OFXFIOrg'), MemTable.FieldByName('OFXFIOrg'));
+      SetParamStrOrNull(Q.ParamByName('OFXBrokerID'), MemTable.FieldByName('OFXBrokerID'));
+      SetParamStrOrNull(Q.ParamByName('OFXURL'), MemTable.FieldByName('OFXURL'));
+      SetParamStrOrNull(Q.ParamByName('ImportFileExtension'), MemTable.FieldByName('ImportFileExtension'));
+
+      //integers
+      SetParamIntOrNull(Q.ParamByName('ImportMethod'), MemTable.FieldByName('ImportMethod'));
+      SetParamIntOrNull(Q.ParamByName('BaseCurrLCID'), MemTable.FieldByName('BaseCurrLCID'));
+      SetParamIntOrNull(Q.ParamByName('OFXMonths'), MemTable.FieldByName('OFXMonths'));
+      SetParamIntOrNull(Q.ParamByName('OFXMaxMonths'), MemTable.FieldByName('OFXMaxMonths'));
+
+      //booleans
+      SetParamBoolOrNull(Q.ParamByName('AssignShortBuy'), MemTable.FieldByName('AssignShortBuy'));
+      SetParamBoolOrNull(Q.ParamByName('AutoAssignShorts'), MemTable.FieldByName('AutoAssignShorts'));
+      SetParamBoolOrNull(Q.ParamByName('BrokerHasTime'), MemTable.FieldByName('BrokerHasTime'));
+      SetParamBoolOrNull(Q.ParamByName('SLConvert'), MemTable.FieldByName('SLConvert'));
+      SetParamBoolOrNull(Q.ParamByName('OFXDirectConnect'), MemTable.FieldByName('OFXDirectConnect'));
+      SetParamBoolOrNull(Q.ParamByName('OFXDescOrder'), MemTable.FieldByName('OFXDescOrder'));
+
+      Q.ExecSQL;
+      MemTable.Next;
+    end;
+  finally
+    FreeAndNil(Q);
+  end;
+  if (MemTable.RecordCount > 0) then begin
+
+  end;
+
+end;
+
+procedure TDM.CreateImportFilters;
+var
+  q: TFDQuery;
+begin
+  q := TFDQuery.Create(nil);
+  try
+    q.Connection := fDB;
+    q.SQL.Text :=
+      'DROP TABLE IF EXISTS _importFilters; ' +
+      'CREATE TABLE IF NOT Exists _importFilters ( ' +
+        'id                  INT, ' +
+        'FilterName          TEXT, ' +
+        'ListText            TEXT, ' +
+        'ImportFunction      TEXT, ' +
+        'AssignShortBuy      INT, ' +
+        'AutoAssignShorts    INT, ' +
+        'ImportMethod        INT, ' +
+        'BaseCurrLCID        INT, ' +
+        'BrokerCode          TEXT, ' +
+        'BrokerHasTime       INT, ' +
+        'SLConvert           INT, ' +
+        'InstructPage        TEXT, ' +
+        'OFXDirectConnect    INT, ' +
+        'OFXFIID             TEXT, ' +
+        'OFXFIOrg            TEXT, ' +
+        'OFXBrokerID         TEXT, ' +
+        'OFXURL              TEXT, ' +
+        'OFXMonths           INT, ' +
+        'OFXMaxMonths        INT, ' +
+        'OFXDescOrder        INT, ' +
+        'ImportFileExtension TEXT ' +
+      ')';
+      q.ExecSQL;
+  finally
+    FreeAndNil(q);
+  end;
+
+
+
+end;
+
+
+procedure TDM.ReadBrokersIntoMemory;
+begin
+  RestClient1.BaseURL := url + 'brokers';
+  RESTRequest1.Execute
+end;
+
+function TDM.ReadBrokersIntoJSON: string;
+begin
+  RestClient1.BaseURL := url + 'brokers';
+  RESTRequest1.Execute;
+  result := RESTResponse1.JSONText;
+end;
+
 
 end.

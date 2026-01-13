@@ -7,6 +7,7 @@ uses
   Forms,
   Controls,
   SysUtils,
+  uDM in 'uDM.pas' {DM: TDataModule},
   TLLogging in 'TLLogging.pas',
   Main in 'Main.pas' {frmMain},
   FuncProc in 'FuncProc.pas',
@@ -104,7 +105,6 @@ uses
   frmSSNEIN in 'frmSSNEIN.pas' {dlgSSNEIN},
   WebGet in 'WebGet.pas' {frmWebGet},
   OSIdentifier in 'OSIdentifier.pas',
-  uDM in 'uDM.pas' {DM: TDataModule},
   Security in 'Security.pas',
   frmOption in 'frmOption.pas' {frmOptionDlg};
 
@@ -114,6 +114,8 @@ begin
   Application.Initialize;
   Application.Title := 'TradeLog';
   Application.ShowHint := true;
+  Application.CreateForm(TDM, DM);
+  Application.CreateForm(TdlgLogIn, dlgLogIn);
   Application.CreateForm(TfrmMain, frmMain);
   Application.CreateForm(TmoduleHints, moduleHints);
   Application.CreateForm(TpanelSplash, panelSplash);
@@ -138,8 +140,6 @@ begin
   Application.CreateForm(TdlgInputValue, dlgInputValue);
   Application.CreateForm(TdlgExcelWarning, dlgExcelWarning);
   Application.CreateForm(TfrmGetStarted, frmGetStarted);
-  Application.CreateForm(TdlgLogIn, dlgLogIn);
   Application.CreateForm(TdlgBackOffice, dlgBackOffice);
-  Application.CreateForm(TDM, DM);
   Application.Run;
 end.

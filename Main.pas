@@ -1438,7 +1438,8 @@ uses
   TypeMult, TLCommonLib, fm1099Info, TLExerciseAssign, ExerciseAssignList,
   Web, WebGet, //
   TLWinInet, WebBrowser, WBform,
-  TLImportFilters, TLDataSources, underlying, AccountSetup, BrokerSelectDlg,
+  TLImportFilters,
+  TLDataSources, underlying, AccountSetup, BrokerSelectDlg,
   PriceList, TLSupport, myInput, TlCharts, GainsLosses,
   //TLYodlee,
   dlgImport, dlgExcelWarn,
@@ -1597,6 +1598,7 @@ var
   sTmp, s1, s2, s3, s4 : string;
   bSiteFound : Boolean;
 begin
+//InitializeImportFilters;
   // ----------------------------------
   mnuBaselinePositionWizard.Visible := baselineWizardOn;
   mnuBaselinePositionWizard.Enabled := baselineWizardOn;

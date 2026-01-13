@@ -92,5 +92,8 @@ modules/
 *.tdf-shm
 *.tdf-wal
 
+# json
+*.json
+
 # git ignore
 *.gitignore

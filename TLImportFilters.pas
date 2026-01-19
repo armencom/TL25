@@ -536,8 +536,8 @@ end;
 
 procedure InitializeImportFilters;
 var
-  F : TResourceStream;
-  JSONObject : TlkJSONObject;
+//  F : TResourceStream;
+//  JSONObject : TlkJSONObject;
   Filter : TlkJSONObject;
   ImpFilter : TTLImportFilter;
   I : Integer;
@@ -545,7 +545,6 @@ var
 begin
   InitializeLocales;
   ImportFilters := TImportFilterList.Create;
-  var q := DM.qry.Create(Nil);
   try
 //  exit;   // RJ August 27 to skip out of IMPORTFILTER error
   // 1. check for internet
@@ -553,61 +552,57 @@ begin
     with DM do begin
       RestClient1.BaseURL := url + 'importfilters';
       RESTRequest1.Execute;
-      q.Connection := fDB;
-
+//      q.Connection := fDB;
+(*
       if (MemTable.RecordCount > 0) then begin
         CreateImportFilters;
         InsertIntoImportFilters;
       end;
-
-      q.SQL.Clear;
-      q.SQL.Text := 'SELECT * FROM _importFilters';
-      q.Open;
-
+*)    MemTable.First;
       //Read data from _importfilters table
-      while not qry.EOF do
+      while not MemTable.EOF do
         try
           for I := 0 to MemTable.RecordCount - 1 do begin
             ImpFilter := TTLImportFilter.Create;
-            ImpFilter.FFilterName := FieldAsString(q.FieldByName('FilterName'));
-            ImpFilter.FListText := FieldAsString(q.FieldByName('ListText'));
-            ImpFilter.FImportFunction := FieldAsString(q.FieldByName('ImportFunction'));
-            ImpFilter.FAssignShortBuy := FieldAsBoolOrFalse(q.FieldByName('AssignShortBuy'));
-            ImpFilter.FAutoAssignShorts := FieldAsBoolOrFalse(q.FieldByName('AutoAssignShorts'));
-            ImpFilter.FAutoAssignShortsOptions := FieldAsBoolOrFalse(q.FieldByName('AutoAssignShorts'));
-  //          ImpFilter.FImportMethod := FieldAsIntOrZero(q.FieldByName('ImportMethod'));
-  //            ImpFilter.FFastLinkable := FieldAsBoolOrFalse(q.FieldByName('FastLinkable'))
-            ImpFilter.FBrokerCode := FieldAsString(q.FieldByName('BrokerCode'));
-  //          ImpFilter.FInstitutionId := VarToStr(q.FieldByName('InstitutionId')); // 2022-02-16 MB
-            ImpFilter.FBrokerHasTimeOfDay := FieldAsBoolOrFalse(q.FieldByName('BrokerHasTime'));
-            ImpFilter.FSLConvert := FieldAsBoolOrFalse(q.FieldByName('SLConvert'));
-            ImpFilter.FInstructPage := FieldAsString(q.FieldByName('InstructPage'));
-  //            ImpFilter.FSupportsCommission := FieldAsBoolOrFalse(q.FieldByName('SupportsCommission'))
-            ImpFilter.FBaseCurrLCID := FieldAsIntOrZero(q.FieldByName('BaseCurrLCID'));
-  //            ImpFilter.FSupportsFlexibleCurrency := FieldAsBoolOrFalse(q.FieldByName('SupportsFlexibleCurrency'))
-  //            ImpFilter.FSupportsFlexibleAssignment := FieldAsBoolOrFalse(q.FieldByName('SupportsFlexibleAssignment'))
-            ImpFilter.FImportFileExtension := '.' + FieldAsString(q.FieldByName('ImportFileExtension'));
-            ImpFilter.FOFXFIID := FieldAsString(q.FieldByName('OFXFIID'));
-            ImpFilter.FOFXFIOrg := FieldAsString(q.FieldByName('OFXFIOrg'));
-            ImpFilter.FOFXBrokerID := FieldAsString(q.FieldByName('OFXBrokerID'));
-            ImpFilter.FOFXURL := FieldAsString(q.FieldByName('OFXURL'));
-            ImpFilter.FOFXMonths := FieldAsIntOrZero(q.FieldByName('OFXMonths'));
-            ImpFilter.FOFXDescOrder := FieldAsBoolOrFalse(q.FieldByName('OFXDescOrder'));
-            ImpFilter.FOFXMaxMonths := FieldAsIntOrZero(q.FieldByName('OFXMonths'));
-  //          ImpFilter.FOFXClass := FieldAsString(q.FieldByName('OFXClass'));
-            ImpFilter.FSupportsOFXConnect := FieldAsBoolOrFalse(q.FieldByName('OFXDirectConnect'));
-  //          ImpFilter.FSupportsOFXFile := FieldAsBoolOrFalse(q.FieldByName('OFXFile'));
-  //            ImpFilter.FFixShortsOOOrder := FieldAsBoolOrFalse(q.FieldByName('FixShortsOOOrder'));
-  //            ImpFilter.FForceMatchStocks := FieldAsBoolOrFalse(q.FieldByName('ForceMatchStocks'));
-  //            ImpFilter.FForceMatchOptions := FieldAsBoolOrFalse(q.FieldByName('ForceMatchOptions'));
-  //            ImpFilter.FForceMatchCurrencies := FieldAsBoolOrFalse(q.FieldByName('ForceMatchCurrencies'))
-  //            ImpFilter.FForceMatchFutures := FieldAsBoolOrFalse(q.FieldByName('ForceMatchFutures'));
+            ImpFilter.FFilterName := FieldAsString(MemTable.FieldByName('FilterName'));
+            ImpFilter.FListText := FieldAsString(MemTable.FieldByName('ListText'));
+            ImpFilter.FImportFunction := FieldAsString(MemTable.FieldByName('ImportFunction'));
+            ImpFilter.FAssignShortBuy := FieldAsBoolOrFalse(MemTable.FieldByName('AssignShortBuy'));
+            ImpFilter.FAutoAssignShorts := FieldAsBoolOrFalse(MemTable.FieldByName('AutoAssignShorts'));
+            ImpFilter.FAutoAssignShortsOptions := FieldAsBoolOrFalse(MemTable.FieldByName('AutoAssignShorts'));
+  //          ImpFilter.FImportMethod := FieldAsIntOrZero(MemTable.FieldByName('ImportMethod'));
+  //            ImpFilter.FFastLinkable := FieldAsBoolOrFalse(MemTable.FieldByName('FastLinkable'))
+            ImpFilter.FBrokerCode := FieldAsString(MemTable.FieldByName('BrokerCode'));
+  //          ImpFilter.FInstitutionId := VarToStr(MemTable.FieldByName('InstitutionId')); // 2022-02-16 MB
+            ImpFilter.FBrokerHasTimeOfDay := FieldAsBoolOrFalse(MemTable.FieldByName('BrokerHasTime'));
+            ImpFilter.FSLConvert := FieldAsBoolOrFalse(MemTable.FieldByName('SLConvert'));
+            ImpFilter.FInstructPage := FieldAsString(MemTable.FieldByName('InstructPage'));
+  //            ImpFilter.FSupportsCommission := FieldAsBoolOrFalse(MemTable.FieldByName('SupportsCommission'))
+            ImpFilter.FBaseCurrLCID := FieldAsIntOrZero(MemTable.FieldByName('BaseCurrLCID'));
+  //            ImpFilter.FSupportsFlexibleCurrency := FieldAsBoolOrFalse(MemTable.FieldByName('SupportsFlexibleCurrency'))
+  //            ImpFilter.FSupportsFlexibleAssignment := FieldAsBoolOrFalse(MemTable.FieldByName('SupportsFlexibleAssignment'))
+            ImpFilter.FImportFileExtension := '.' + FieldAsString(MemTable.FieldByName('ImportFileExtension'));
+            ImpFilter.FOFXFIID := FieldAsString(MemTable.FieldByName('OFXFIID'));
+            ImpFilter.FOFXFIOrg := FieldAsString(MemTable.FieldByName('OFXFIOrg'));
+            ImpFilter.FOFXBrokerID := FieldAsString(MemTable.FieldByName('OFXBrokerID'));
+            ImpFilter.FOFXURL := FieldAsString(MemTable.FieldByName('OFXURL'));
+            ImpFilter.FOFXMonths := FieldAsIntOrZero(MemTable.FieldByName('OFXMonths'));
+            ImpFilter.FOFXDescOrder := FieldAsBoolOrFalse(MemTable.FieldByName('OFXDescOrder'));
+            ImpFilter.FOFXMaxMonths := FieldAsIntOrZero(MemTable.FieldByName('OFXMonths'));
+  //          ImpFilter.FOFXClass := FieldAsString(MemTable.FieldByName('OFXClass'));
+            ImpFilter.FSupportsOFXConnect := FieldAsBoolOrFalse(MemTable.FieldByName('OFXDirectConnect'));
+  //          ImpFilter.FSupportsOFXFile := FieldAsBoolOrFalse(MemTable.FieldByName('OFXFile'));
+  //            ImpFilter.FFixShortsOOOrder := FieldAsBoolOrFalse(MemTable.FieldByName('FixShortsOOOrder'));
+  //            ImpFilter.FForceMatchStocks := FieldAsBoolOrFalse(MemTable.FieldByName('ForceMatchStocks'));
+  //            ImpFilter.FForceMatchOptions := FieldAsBoolOrFalse(MemTable.FieldByName('ForceMatchOptions'));
+  //            ImpFilter.FForceMatchCurrencies := FieldAsBoolOrFalse(MemTable.FieldByName('ForceMatchCurrencies'))
+  //            ImpFilter.FForceMatchFutures := FieldAsBoolOrFalse(MemTable.FieldByName('ForceMatchFutures'));
 
             ImportFilters.Add(ImpFilter.FilterName, ImpFilter);
-            q.Next;
+            MemTable.Next;
           end;
         finally
-          JSONObject.Free;
+//          JSONObject.Free;
         end;
     end;
   finally

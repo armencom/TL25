@@ -80,6 +80,7 @@ begin
     with DM.qry do begin
       SQL.Clear;
       Close;
+      Connection := DM.fDB;
       SQL.Text := 'CREATE TABLE IF NOT EXISTS tdfFile (' + tSQL + ')';
       ExecSQL;
       Close;
@@ -250,6 +251,7 @@ begin
   try
     try
       with DM.qUpdateTables do begin
+        Connection := DM.fDB;
         Close;
         ExecSQL;
       end;
@@ -316,8 +318,11 @@ begin
       + sName + '","' + sFlag + '")';
     with DM.qry do begin
       SQL.Clear;
+      Close;
+      Connection := DM.fDB;
       SQL.Text := tSQL;
       ExecSQL;
+      Close;
     end;
 //    try
 //      sqlite3_exec_fast(pDB, tSQL);

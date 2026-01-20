@@ -83,6 +83,20 @@ object pnlBaseline: TpnlBaseline
         TabOrder = 0
         OnClick = btnCloseClick
       end
+      object btnClose1: TRzButton
+        Left = 20
+        Top = 8
+        Cancel = True
+        Caption = 'Exit'
+        Font.Charset = DEFAULT_CHARSET
+        Font.Color = clWindowText
+        Font.Height = -13
+        Font.Name = 'Tahoma'
+        Font.Style = []
+        ParentFont = False
+        TabOrder = 1
+        OnClick = btnClose1Click
+      end
     end
   end
   object pnlBtn: TPanel

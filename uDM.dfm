@@ -9,9 +9,6 @@ object DM: TDM
   object fDB: TFDConnection
     Params.Strings = (
       'JournalMode=WAL'
-      
-        'Database=C:\Users\Ralph\Documents\TradeLog\TL25\2025 Ralph Jones' +
-        '.tdf'
       'CacheSize=16384'
       'LockingMode=Normal'
       'Synchronous=Normal'

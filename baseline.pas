@@ -29,6 +29,7 @@ type
     wb2: TWebBrowser;
     btnEnterBaseline: TRzButton;
     btnBegin: TRzButton;
+    btnClose1: TRzButton;
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
     procedure FormResize(Sender: TObject);
@@ -42,6 +43,7 @@ type
       const URL: OleVariant);
     procedure btnEnterBaselineClick(Sender: TObject);
     procedure FormActivate(Sender: TObject);
+    procedure btnClose1Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -167,6 +169,11 @@ begin
   end;
 end;
 
+
+procedure TpnlBaseline.btnClose1Click(Sender: TObject);
+begin
+  Close;
+end;
 
 procedure TpnlBaseline.btnCloseClick(Sender: TObject);
 begin

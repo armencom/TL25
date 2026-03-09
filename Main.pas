@@ -1437,10 +1437,9 @@ uses
   frmPageSetupDlg, TLSettings, splash, messagePanel, TLUpdate,
   TypeMult, TLCommonLib, fm1099Info, TLExerciseAssign, ExerciseAssignList,
   Web, WebGet, //
-  TLWinInet, WebBrowser, WBform,
-  uDM,
-  TLImportFilters,
-  TLDataSources, underlying, AccountSetup, BrokerSelectDlg,
+  TLWinInet, // WebBrowser,
+  WBform,
+  TLImportFilters, TLDataSources, underlying, AccountSetup, BrokerSelectDlg,
   PriceList, TLSupport, myInput, TlCharts, GainsLosses,
   //TLYodlee,
   dlgImport, dlgExcelWarn,
@@ -1576,11 +1575,17 @@ begin
     if paramCount > 0 then begin
       for I := 1 to paramCount do begin
         if (ParamStr(I)[1] = '-') then begin
-          if (ContainsStr(ParamStr(I), '-updatetimeout')) then
+          if (ContainsStr(ParamStr(I), '-debugmode')) then begin
+            if (SuperUser or Developer) then DEBUG_MODE :=
+              StrToInt(Trim(RightStr(ParamStr(I), Length(ParamStr(I)) - pos('=', ParamStr(I)))));
+          end
+//          else if (ContainsStr(ParamStr(I), '-updatetimeout')) then begin
 //            UpdateInformation.BlockingTimeout :=
 //              StrToInt(Trim(RightStr(ParamStr(I), Length(ParamStr(I)) - pos('=', ParamStr(I)))))
-          else if (ContainsStr(ParamStr(I), '-log')) then
+//          end
+          else if (ContainsStr(ParamStr(I), '-log')) then begin
             InLiveLogMode := True;
+          end;
         end
         else if FileExists(ParamStr(I)) //
         and (LowerCase(ExtractFileExt(ParamStr(I))) = '.tdf') then begin
@@ -1645,13 +1650,7 @@ InitializeImportFilters;
       statBar('Setting Up TradeLog');
       editDisable(false);
       SetupOpenCloseItems;
-//      if Settings.DispQS then begin
-//        panelQS.show;
-//        if (TradeLogFile <> nil) and (TradeLogFile.Count = 0) then
-//          panelQS.doQuickStart(2, 1, True)
-//        else
-//          panelQS.doQuickStart(3, 1);
-//      end;
+      // used to call QuickStart here
       pnlTools.Height := Toolbar1.Height + pnlBlue.Height;
     end; // if not TLStart - So first time we are starting app.
     if (TrFileName = '') then begin
@@ -1667,17 +1666,17 @@ InitializeImportFilters;
       s2 := gsInstallVer;
       sTmp := parselast(s2, '.'); // remove last segment
       if (gsVersion > gsInstallVer) then begin
-        bbHelp_Update.Caption := 'important update';
+        bbHelp_Update.Caption := 'Important Update';
         if (s1 > s2) and not bCancelLogin then begin
-//          s3 := parsefirst(s1, '.'); // major ver#
-//          s4 := parsefirst(s2, '.'); // major ver#
-//          if (s3 > s4) then begin
-//            sm('There is a mandatory update required.' + cr //
-//              + 'TradeLog will now automatically close' + cr //
-//              + 'and the new version will be installed.');
-//            gbUpdateNow := true; // don't ask, just do!
-//          end
-//          else
+          s3 := parsefirst(s1, '.'); // major ver#
+          s4 := parsefirst(s2, '.'); // major ver#
+          if (s3 > s4) then begin // *** MANDATORY UPDATE ***
+            sm('There is a mandatory update required.' + cr //
+              + 'TradeLog will now automatically close' + cr //
+              + 'and the new version will be installed.');
+            gbUpdateNow := true; // don't ask, just do!
+          end
+          else
           if mDlg('An updated Tradelog version ' + gsVersion +' is now available!' + cr //
             + cr //
             + 'Brief Description:' + cr //
@@ -1690,14 +1689,14 @@ InitializeImportFilters;
           end; // if mDlg
         end // if s1 > s2
         else begin
-          bbHelp_Update.Caption := 'Minor update';
+          bbHelp_Update.Caption := 'Minor Update';
         end;
       end // if newer version
       else begin
         if (gsInstalldate >= gsRelDate) then
           bbHelp_Update.Caption := 'Up to date'
         else
-          bbHelp_Update.Caption := 'Minor update';
+          bbHelp_Update.Caption := 'Minor Update';
       end;
     end; // if not TLStart and bSiteFound
     // ------------------------------------------
@@ -4670,12 +4669,12 @@ begin
       v2WriteTaxFileLog(v2UserToken, sFileCode, 'Tracking', IntToStr(nAccts), sN, sAccts, '');
       // survey
       If (not ProVer) and (not SuperUser) //
-      and (TaxYear = '2024') then begin
+      and (TaxYear = '2025') then begin
         // V = Investor / Trader / Elite - this helps us understand what version customer is using
         // ETY = this is the same ETY code we pass with the filekey information, encoding the brokers
         // N = number of records in file
-        sURL := 'https://www.surveymonkey.com/r/tradelog2024?' //
-          + 'V=' + Settings.TLVer //
+        sURL := 'https://www.surveymonkey.com/r/GMHFR5Z' //
+          + '?V=' + Settings.TLVer //
           + char(38) + 'ETY=' + sAccts //
           + char(38) + 'N=' + sN;
         webURL(sURL);
@@ -4863,6 +4862,19 @@ begin
       end;
     end;
     // ------------------------------------------------------------
+    if (TradeLogFile.CurrentAccount.FileImportFormat = 'E-Trade') //
+    or (TradeLogFile.CurrentAccount.FileImportFormat = 'Webull') then begin
+      if NOT TradeLogFile.CurrentAccount.AutoAssignShorts then begin
+        if messagedlg('BrokerConnect data for this broker does not contain' + CRLF //
+          + 'Long/Short designation, but Auto Assign Short is OFF.' + CRLF //
+          + 'Turn ON Auto Assign Short (recommended)?',
+        mtConfirmation, [mbYes,mbNo], 0) = mrYes then
+        begin
+          TradeLogFile.CurrentAccount.AutoAssignShorts := true;
+        end; // user Yes/No
+      end; // if not AutoAssignShorts
+    end; // if E-Trade or Webull
+    // ------------------------------------------------------------
     statBar('Importing Trade History');
     btnShowAll.Click;
     DeleteFile('filter.txt');
@@ -4997,6 +5009,19 @@ begin
         exit;
       end;
     end;
+    // ------------------------------------------------------------
+    if (TradeLogFile.CurrentAccount.FileImportFormat = 'E-Trade') //
+    or (TradeLogFile.CurrentAccount.FileImportFormat = 'Webull') then begin
+      if TradeLogFile.CurrentAccount.AutoAssignShorts then begin
+        if messagedlg('Download files for this broker contain Long/Short' + CRLF //
+          + 'designation, but Auto Assign Short is enabled.' + CRLF //
+          + 'Turn OFF Auto Assign Short (recommended)?',
+          mtConfirmation, [mbYes,mbNo], 0) = mrYes then
+        begin
+          TradeLogFile.CurrentAccount.AutoAssignShorts := false;
+        end; // user Yes/No
+      end; // if AutoAssignShorts
+    end; // if E-Trade or Webull
     // ------------------------------------------------------------
     statBar('Importing Trade History');
     btnShowAll.Click;
@@ -5341,8 +5366,8 @@ begin
   if Settings.DispWSdefer then filterInWashSales;
   ReportStyle := rptNone;
   spdRunReport.Enabled := false;
-  cbForm8949pdf.checked := false;
-  cbForm8949pdf.visible := false;
+//  cbForm8949pdf.checked := false;
+//  cbForm8949pdf.visible := false;
   // DE added 2015-11-07
   if TradeLogFile.YearEndDone then disableEdits;
   screen.Cursor := crDeFault;
@@ -5699,7 +5724,7 @@ end;
 
 procedure TfrmMain.MainMenuClick(Sender: TObject);
 begin
-  if IsFormVisible('frmWebBrowserPopup') then frmWebBrowserPopup.close;
+//  if IsFormVisible('frmWebBrowserPopup') then frmWebBrowserPopup.close;
 end;
 
 
@@ -5919,6 +5944,7 @@ begin
   pnlStatements.Visible := false;
   pnlWS.Visible := false;
   pnlMTM.Visible := false;
+  btnHelp8949Rpt.Visible := false;
   // replaced Length(Settings.SSN) > 0;
   // ------------------------
   if ReportStyle in [rptGAndL] then begin
@@ -5934,12 +5960,13 @@ begin
   // Reports
   // ------------------------
   if ReportStyle = rptIRS_D1 then begin //                            Form 8949
+    btnHelp8949Rpt.Visible := true;
     lblReportName.Caption := UpperCase(RemoveAmpersands(Form1040ScheduleD1.Caption)) + ': ';
     if TradeLogFile.TaxYear > 2010 then begin
       pnlStatements.Visible := True;
       cbIncludeStatement.Visible := (TradeLogFile.TaxYear > 2011);
       cbIncludeAdjustment.Visible := (TradeLogFile.TaxYear < 2014);
-      cbForm8949pdf.Visible := True;
+//      cbForm8949pdf.Visible := True;
       cbInc8949Summary.Visible := (TradeLogFile.TaxYear > 2011);
       if (TradeLogFile.TaxYear < 2024) then cbForm8949.Checked := true;
       cbForm8949.Visible := (TradeLogFile.TaxYear > 2023);
@@ -6064,6 +6091,11 @@ begin
       DoStocks; // needed for G/L report
     if TradeLogFile.CurrentBrokerID = 0 then
       FilterByBrokerAccountType(False, True, True, False) {Filter out MTM Accounts}
+  end
+  else if bFiltered // 2026-02-16 MB - special case:
+  and (TradeLogFile.CurrentBrokerID = 0) // Filtered, All Accounts, and G/L Rpt
+  and (ReportStyle in [rptSubD1]) then begin
+    FilterByBrokerAccountType(False, True, True, False) // Filter out MTM
   end; // -------------------
   //SortByTickerForWS;
   startTime := time - startTime;
@@ -6479,14 +6511,6 @@ begin
         bbAccount_BrokerConnect.enabled := true;
         bbAccount_FromFile.enabled := true;
       end
-//      else if Settings.LegacyBC //
-//      and ((TradeLogFile.CurrentAccount.importFilter.FilterName = 'E-Trade') //
-//      or (TradeLogFile.CurrentAccount.importFilter.FilterName = 'Fidelity')) //
-//      then begin
-//        bbAccount_ImportSettings.enabled := true;
-//        bbAccount_BrokerConnect.enabled := true;
-//        bbAccount_FromFile.enabled := true;
-//      end
       else if (TradeLogFile.CurrentAccount.ImportFilter.FastLinkable = true) //
       then begin
         bbAccount_ImportSettings.enabled := true;
@@ -8232,10 +8256,10 @@ begin
   stMessage.Width := frmMain.Width - 14;
   pnlDoReport.Left := frmMain.Width - pnlDoReport.Width - 30;
   pnlDoReport.Top := 6;
-  if IsFormVisible('frmWebBrowserPopup') then begin
-    frmWebBrowserPopup.Width := ClientWidth;
-    frmWebBrowserPopup.Height := ClientHeight - statusBar.Height;
-  end;
+//  if IsFormVisible('frmWebBrowserPopup') then begin
+//    frmWebBrowserPopup.Width := ClientWidth;
+//    frmWebBrowserPopup.Height := ClientHeight - statusBar.Height;
+//  end;
   StatusBar.Visible := false; // RJ Jan 1, 2021
 end;
 
@@ -8341,7 +8365,7 @@ begin
   TL := 0;
   winTitles := TStringList.Create;
   try
-    if (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab')
+    if (TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab')
     or (TradeLogFile.CurrentAccount.FileImportFormat = 'Scottrade')
     or (TradeLogFile.CurrentAccount.FileImportFormat = 'TOS')
     or (TradeLogFile.CurrentAccount.FileImportFormat = 'Fidelity') then begin
@@ -8482,9 +8506,11 @@ begin
   end;
   if AlreadyLoaded then exit;
   // ------------
-  if not Developer then begin // not during development, though
-//    GetOSInfo; // 2025.07.17 MDB
-  end;
+//  if (Developer=false) // regular users always check OS...
+//  or ((Developer=true) and (DEBUG_MODE > 3)) // or debugging
+//  then begin //
+//    GetOSInfo;  // 2025-10-06 MB - disabled
+//  end;
   // --------------
   OpenFilePassedIn; // was a file passed in?
   // ------------
@@ -9462,14 +9488,14 @@ begin
   TLSupportLib.GetSupportFile(sFile);
 end;
 
-          // ----------+
-          // Test Code |
-          // ----------+
 procedure TfrmMain.bbSuper_TaxFilesClick(Sender: TObject);
 begin
   frmMain.mnuFileResetUser;
 end;
 
+          // ----------+
+          // Test Code |
+          // ----------+
 procedure TfrmMain.bbSuper_TestClick(Sender: TObject);
 var
   sEmail, sPwd, sAuth, s, t, s1, s2, s3, s4 : string;
@@ -9482,7 +9508,7 @@ var
   // ------------------------
   function ReadDiagnostics(sFile : string) : string;
   var
-    s : string;
+    s5 : string;
     myFile : TextFile;
   begin
     result := ''; // clear
@@ -9490,9 +9516,9 @@ var
       AssignFile(myFile, sFile);
       reset(myFile);
       while not Eof(myFile) do begin
-        ReadLn(myFile, s);
-        if pos('Diagnostics data: ', s) = 1 then s := copy(s, 19);
-        result := result + CRLF + dEncrypt(s, '');
+        ReadLn(myFile, s5);
+        if pos('Diagnostics data: ', s5) = 1 then s5 := copy(s5, 19);
+        result := result + CRLF + dEncrypt(s5, '');
       end;
     finally
       CloseFile(myFile);
@@ -9504,10 +9530,16 @@ begin
     sAuth := v2UserToken
   else
     sAuth := v2ClientToken;
+  // ----
+//  s1 := inputbox('ClientName', 'for ' + v2ClientEmail, 'TL:' + v2CustomerId);
+//  s2 := inputbox('BrokerId', 'to delete', s2);
+//  DeleteBrokerLink(sAuth, s1, s2);
+//  exit;
+  // ----
   if v2UserEmail = 'mark@tradelogsoftware.com' then begin
-    sAuth := Settings.DataDir + '\diagnostics.txt';
-    if fileexists(sAuth) then begin
-      t := ReadDiagnostics(sAuth);
+    s := Settings.DataDir + '\diagnostics.txt';
+    if fileexists(s) then begin
+      t := ReadDiagnostics(s);
       sm('Diagnostics:' + crlf + t);
       exit;
     end;
@@ -9518,7 +9550,10 @@ begin
   // ------------------------
   if TaxYear = '' then sN := inputbox('Tax Year','yyyy: ', '') else sN := TaxYear;
   t := inputbox('Get MTM Price for...', 'option:', t);
-  s := GetMTMPriceOPT(sAuth, sN, t);
+  if length(t) > 9 then
+    s := GetMTMPriceOPT(sAuth, sN, t)
+  else
+    s := GetMTMPriceSTK(sAuth, sN, t);
   sm('$' + s);
   exit;
   // ------------------------
@@ -10150,12 +10185,12 @@ begin
     ChangeToTab(Header.AccountName);
     // offer to call import settings if broker is "fastlinkable"
     if (TradeLogFile.CurrentAccount.importFilter.FastLinkable) then begin
-      if mDlg('This broker supports BrokerConnect' + CRLF //
-        + 'Would you like to set that up now?',
-        mtConfirmation, mbYesNo, 0) = mrYes
-      then
-        EditCurrentImport(''); // import settings
-      SetupToolBarMenuBar(false);
+//      if mDlg('This broker supports BrokerConnect' + CRLF //
+//        + 'Would you like to set that up now?',
+//        mtConfirmation, mbYesNo, 0) = mrYes
+//      then
+//        EditCurrentImport(''); // import settings
+      SetupToolBarMenuBar(false); // for any FastLinkable account
     end;
     // finally, call baseline wizard when creating new account tab
     if baselineWizardOn then begin
@@ -10378,11 +10413,11 @@ begin
     with frmMain.cxGrid1TableView1.DataController do begin
       for i := 0 to GetSelectedCount - 1 do begin
         rec := GetRowInfo(GetSelectedRowIndex(i)).RecordIndex;
-        if NOT (IsStockType(TradeLogFile[rec].TypeMult) //
-        or (POS('VTN', TradeLogFile[rec].TypeMult)=1)) then begin
-          mDlg('This function is only for stock type trades.', mtError, [mbOK], 0);
-          exit;
-        end;
+//        if NOT (IsStockType(TradeLogFile[rec].TypeMult) //
+//        or (POS('VTN', TradeLogFile[rec].TypeMult)=1)) then begin
+//          mDlg('This function is only for stock type trades.', mtError, [mbOK], 0);
+//          exit;
+//        end;
       end; // for
     end; // with
     // -------- get change in amount ------------
@@ -10938,7 +10973,14 @@ begin
     b3 := false;
     bFound := true;
   end
-  else if (s = 'E-Trade') then begin
+  // --- ETrade
+  else if (s = 'ETrade-MS') then begin
+    b1 := true;
+    b2 := true;
+    b3 := false;
+    bFound := true;
+  end
+  else if (s = 'ET-Legacy') then begin
     if (TradeLogFile.TaxYear >= 2019) then begin
       b1 := true;
       b2 := true;
@@ -10952,6 +10994,7 @@ begin
       bFound := true;
     end;
   end
+  //
   else if (s = 'Fidelity') then begin
     b1 := true;
     b2 := true;

@@ -340,18 +340,6 @@ object frmOptDialog: TfrmOptDialog
         Caption = 'Display Wash Sale Holding Date'
         TabOrder = 11
       end
-      object chkLegacyBC: TCheckBox
-        Left = 13
-        Top = 329
-        Width = 286
-        Height = 15
-        Margins.Left = 2
-        Margins.Top = 2
-        Margins.Right = 2
-        Margins.Bottom = 2
-        Caption = 'Use Legacy BrokerConnect for Fidelity and E*Trade'
-        TabOrder = 12
-      end
     end
     object tabBroadBased: TTabSheet
       Margins.Left = 2

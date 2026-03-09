@@ -201,7 +201,6 @@ type
     FUserBackupDir: String;
     FUserBackupDate: Boolean;
     FSkinName : string;
-    FLegacyBC : Boolean; // 2022-01-20 MB New
     // ------------------------------------------
     procedure ConvertVersion(Value : String);
     // ---
@@ -304,7 +303,6 @@ type
     procedure SetUserBackupDate(const Value: Boolean);
     procedure setNewInstall(const Value: Integer);
     procedure SetSkinName(const Value: string);
-    procedure SetLegacyBC(const Value: boolean);
     procedure SetUserEmail(const Value: String);
     procedure SetUserPassword(const Value: String);
     procedure SetKeepPwd(const Value: Boolean);
@@ -330,7 +328,6 @@ type
     property RecLimit : String read FRecLimit;
     property TrialVersion : Boolean read FTrialVersion;
     property MTMVersion : Boolean read FMTMVersion write FMTMVersion; //GetMTMVersion;
-//    property RegProSuperUser : string read GetRegProSuper write SetRegProSuper;
     // --- Date Installed, Expires --------------
     property DateInstalled : String read GetDateInstalled write SetDateInstalled;
     property DateExpired : String read GetDateExpired write SetDateExpires;
@@ -362,7 +359,6 @@ type
     procedure ResetMutualFunds;
     procedure ResetETFs;
     // ------------------------------------------
-    // property BBIOList :   TList read FBBIOList write SetBBIOList;
     property BBIOList : TLBBIOList read FBBIOList write SetBBIOList;
     property FutureList : TList read FFutureList write SetFutureList;
     property MutualFundList : TLSymbolList read FMutualFundList write SetMutualFundList;
@@ -416,7 +412,6 @@ type
     property LogFileName : String read GetLogFileName;
     property NewInstall : integer read FNewInstall write SetNewInstall;
     property SkinName : string read FSkinName write SetSkinName;
-    property LegacyBC : Boolean read FLegacyBC write SetLegacyBC;
     // ------------------------------------------
     function ReadUpdateTime : string;
     procedure WriteUpdateTime(sUpdateTime:string);
@@ -932,7 +927,7 @@ begin
   end
   else begin // -- need to read registry --
     t := IniFile.ReadString(TRADELOG, 'Dtex', '');
-    if isdate(t) then result := t // OLD legacy
+    if isdate(t) then result := t // OLD
     else result := Dencrypt(t, '');
   end;
 end;
@@ -947,7 +942,7 @@ begin
   end
   else begin // -- need to read registry --
     t := IniFile.ReadString(TRADELOG, 'Inst', '');
-    if isdate(t) then result := t // OLD legacy
+    if isdate(t) then result := t // OLD
     else result := Dencrypt(t, '');
   end;
 end;
@@ -1518,7 +1513,7 @@ begin
     RemoveTrailingBackSlash(FInstallDir);
     // ----------------------
     FSkinName := IniFile.ReadString (TRADELOG_OPTIONS, 'SkinName', 'Office2010Silver');
-    FLegacyBC := IniFile.ReadBool(TRADELOG_OPTIONS, 'LegacyBC', False);
+//    FLegacyBC := IniFile.ReadBool(TRADELOG_OPTIONS, 'LegacyBC', False);
   finally
     // ReadGeneralSettings
   end;
@@ -2126,12 +2121,6 @@ begin
   IniFile.WriteString (TRADELOG_OPTIONS, 'SkinName', FSkinName);
 end;
 
-
-procedure TTLSettings.SetLegacyBC(const Value: boolean);
-begin
-  FLegacyBC := Value;
-  IniFile.WriteBool (TRADELOG_OPTIONS, 'LegacyBC', FLegacyBC);
-end;
 
 // ------------------------------------
 // User Email and Password settings

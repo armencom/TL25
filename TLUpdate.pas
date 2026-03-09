@@ -56,8 +56,10 @@ function DetermineDownloadableVersion: string;
 var
   s, s1, sVer, t, t1, sYY, sMM, sDD, xs : string;
   lstFlds, lstVer : TStrings;
+  dtNow : TDateTime;
 begin
   result := 'error'; // assume failure
+  dtNow := time;
   s := GetVersion('latest');
   t := parseBetween(s, '[', ']');
   // [

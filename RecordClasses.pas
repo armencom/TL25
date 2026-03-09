@@ -545,7 +545,7 @@ begin
   frmMain.repaint;
   statBar('Finding Duplicates - Please Wait...');
   screen.cursor := crHourglass;
-    // sm('FilteredRecordCount = '+intToStr(frmMain.cxGrid1tableView1.DataController.FilteredRecordCount));
+  // sm('FilteredRecordCount = '+intToStr(frmMain.cxGrid1tableView1.DataController.FilteredRecordCount));
   // get all duplicate trade item numbers
   for I := 0 to frmMain.cxGrid1TableView1.dataController.FilteredRecordCount - 2 do begin
     recIdx := frmMain.cxGrid1TableView1.dataController.FilteredRecordIndex[I];
@@ -561,6 +561,7 @@ begin
       inc(x);
     end;
   end;
+  // ------------------------
   if (x = 0) then begin
     frmMain.btnShowAll.click;
     sm('No duplicates found.');
@@ -579,6 +580,7 @@ begin
     frmMain.cxGrid1TableView1.dataController.BeginUpdate;
     ClearFilter;
     AFiltList := nil;
+    screen.cursor := crHourglass;
     if pos(',', ItemNumStr) > 0 then begin
       frmMain.cxGrid1TableView1.dataController.Filter.Root.BoolOperatorKind := fboAnd;
       AFiltList := frmMain.cxGrid1TableView1.dataController.Filter.Root.AddItemList(fboOr);
@@ -586,6 +588,7 @@ begin
         ItemNum := copy(ItemNumStr, 1, pos(',', ItemNumStr) - 1);
         AFiltList.AddItem(frmMain.cxGrid1TableView1.items[0], foEqual, ItemNum, ItemNum);
         delete(ItemNumStr, 1, pos(',', ItemNumStr));
+        screen.cursor := crHourglass;
       end;
     end;
     if (AFiltList <> nil) and (AFiltList.Count = 0) then
@@ -594,6 +597,7 @@ begin
     frmMain.cxGrid1TableView1.dataController.Filter.active := True;
     frmMain.cxGrid1TableView1.dataController.EndUpdate;
   end;
+  screen.cursor := crHourglass;
   sortByAmount;
   statBar('off');
   screen.cursor := crDefault;
@@ -1033,6 +1037,9 @@ begin
         (frmMain.cxGrid1TableView1.items[9], foNotLike, 'FUT*', 'FUT*');
       frmMain.cxGrid1TableView1.dataController.Filter.Root.AddItem
         (frmMain.cxGrid1TableView1.items[9], foNotLike, 'CUR*', 'CUR*');
+      if (TradeLogFile.TaxYear > 2024) then
+        frmMain.cxGrid1TableView1.dataController.Filter.Root.AddItem
+          (frmMain.cxGrid1TableView1.items[9], foNotLike, 'DCY*', 'DCY*');
       frmMain.cxGrid1TableView1.dataController.Filter.active := True;
     finally
       frmMain.cxGrid1TableView1.dataController.Filter.EndUpdate;

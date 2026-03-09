@@ -288,7 +288,7 @@ end;
 
 constructor TWebSelfPopup.CreateHook(WebBrowser: TWebBrowser);
 begin
-  if (TradeLogFile.CurrentAccount.FileImportFormat='Charles Schwab') then exit;
+  if (TradeLogFile.CurrentAccount.FileImportFormat='Schwab') then exit;
   // Perform inherited
   inherited CreateParented(WebBrowser.Handle);
   // Set defaults
@@ -301,7 +301,7 @@ end;
 
 destructor TWebSelfPopup.Destroy;
 begin
-  if (TradeLogFile.CurrentAccount.FileImportFormat='Charles Schwab') then exit;
+  if (TradeLogFile.CurrentAccount.FileImportFormat='Schwab') then exit;
   // Clear the web browser interfaces
   FBrowser:=nil;
   FreeAndNil(FPopup);
@@ -323,7 +323,7 @@ end;
 procedure TfrmWeb.FormActivate(Sender: TObject);
 begin
   frmMain.enabled:=true;
-  if (TradeLogFile.CurrentAccount.FileImportFormat='Charles Schwab') then exit;
+  if (TradeLogFile.CurrentAccount.FileImportFormat='Schwab') then exit;
   WebSelfPopup:=TWebSelfPopup.CreateHook(WebBrowser1);
 end;
 
@@ -343,7 +343,7 @@ begin
     // Violation by this component. So let's just capture this exception
     // and ignore it since it is meaningless.
   end;
-  if not (TradeLogFile.CurrentAccount.FileImportFormat='Charles Schwab') then WebSelfPopup.free;
+  if not (TradeLogFile.CurrentAccount.FileImportFormat='Schwab') then WebSelfPopup.free;
   regCheck:=false;
   if TrFileName='' then disableMenuTools;
   repaintGrid;
@@ -411,7 +411,7 @@ var
   Document: IHTMLDocument2;
   iall: IHTMLElement;
 begin
-  if not (TradeLogFile.CurrentAccount.FileImportFormat='Charles Schwab') then exit;
+  if not (TradeLogFile.CurrentAccount.FileImportFormat='Schwab') then exit;
   // a new instance of TfrmWeb will be created
   frmWebPopup := TfrmWeb.Create(self);
   ppDisp := frmWebPopup.WebBrowser1.application;
@@ -1082,7 +1082,7 @@ begin
           // ==============================================
           // Charles Schwab
           // ==============================================
-          else if (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab')
+          else if (TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab')
           then begin
           // updated 2011-10-26
             if (pos('?ErrorCode', URL)> 0) then begin
@@ -1407,10 +1407,10 @@ begin
           // ==============================================
           // TradeStation
           // ==============================================
-          else if TradeLogFile.CurrentAccount.FileImportFormat = 'TradeStation'
-          then begin
-            scrapeTradestation(URL, htmlTxt, WebBrowser1);
-          end // FileImportFormat = 'TradeStation'
+//          else if TradeLogFile.CurrentAccount.FileImportFormat = 'TradeStation'
+//          then begin
+//            scrapeTradestation(URL, htmlTxt, WebBrowser1);
+//          end // FileImportFormat = 'TradeStation'
           // ==============================================
           // Vanguard
           // ==============================================
@@ -1618,16 +1618,16 @@ begin
         exit;
       end;
       saveImportAsFile(webGetdata, dateStart, dateEnd, settings.InternalFmt);
-    end   // <-- if broker is IB
-    // ==============================================
-    // Fidelity
-    // ==============================================
-    else if (TradeLogFile.CurrentAccount.FileImportFormat = 'Fidelity') then begin
-      //if SuperUser and (DEBUG_MODE > 2) then sm('SetupBrokerConnect for Fidelity');
-      with frmWeb do begin
-        tmrWebTimeout.Interval := 15000; // 15 seconds
-        tmrWebTimeout.Enabled := true;
-      end;
+//    end   // <-- if broker is IB
+//    // ==============================================
+//    // Fidelity
+//    // ==============================================
+//    else if (TradeLogFile.CurrentAccount.FileImportFormat = 'Fidelity') then begin
+//      //if SuperUser and (DEBUG_MODE > 2) then sm('SetupBrokerConnect for Fidelity');
+//      with frmWeb do begin
+//        tmrWebTimeout.Interval := 15000; // 15 seconds
+//        tmrWebTimeout.Enabled := true;
+//      end;
     end;
   finally
     frmMain.cxGrid1.LayoutChanged;

@@ -171,10 +171,12 @@ begin
     IniFile.WriteInteger(TRADELOG_SETUP, 'pv', pv);
     // --------------------------------------------
     // Just for Melina: select debug level
-    if SuperUser then
-      DEBUG_MODE := 3
-    else
+    if (SuperUser or Developer) then begin
+      if (DEBUG_MODE < 3) THEN DEBUG_MODE := 3;
+    end
+    else begin
       DEBUG_MODE := 2;
+    end;
     // --------------------------------------------
   finally
     IniFile.Destroy;
@@ -577,9 +579,10 @@ begin
 end;
 
 
+// if subscription has expired
 procedure doOneYrLockout;
 begin
-  with frmMain do begin // subscription expired
+  with frmMain do begin
     bbFile_New.Enabled := false;
     // combine1.Enabled := false;
     bbFile_EndTaxYear.Enabled := false;
@@ -616,20 +619,11 @@ begin
       + ' from registry (offline) = ' + Settings.DateExpired;
   end;
   // -- calculate daysLeftInSubscr --------------
-  if ((v2CancelDate > 0) and (v2CancelDate < v2EndDate)) then
-    daysLeftInSubscr := trunc(v2CancelDate - now + 1)
-  else begin
+//  if ((v2CancelDate > 0) and (v2CancelDate < v2EndDate)) then
+//    daysLeftInSubscr := trunc(v2CancelDate - now + 1)
+//  else begin
     daysLeftInSubscr := trunc(expDate - now + 1);
-//    if Developer then begin
-//      testDate := now;
-//      s := s + CRLF //
-//        + 'expDate = ' + datetostr(expDate) + CRLF //
-//        + 'now = ' + datetostr(testDate) + CRLF //
-//        + 'daysLeftInSubscr = ' + inttostr(daysLeftInSubscr);
-//      clipboard.AsText := s;
-//      sm('dates: ' + CRLF + s);
-//    end;
-  end;
+//  end;
   // ---
   frmMain.stRegDaysLeft.Caption := 'Days left in subscr: ' + intToStr(daysLeftInSubscr);
   frmMain.stRegDaysLeft.font.color := clBlack;

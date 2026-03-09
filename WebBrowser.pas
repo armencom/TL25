@@ -66,19 +66,6 @@ end;
 procedure TfrmWebBrowserPopup.btnUpdateClick(Sender: TObject);
 begin
   sm('do software update');
-//  if Not UpdateInformation.Updating then begin
-//    if mDlg('Tradelog will close and install version ' + UpdateInformation.UpdateVersion + '!' + cr //
-//      + cr //
-//      + 'Are you sure you want to install the update now?', mtWarning, [mbOK, mbCancel], 0) = mrOK //
-//    then begin
-//      Enabled := False;
-//      frmMain.Enabled := False;
-//      if UpdateInformation.UpdateReadyToInstall then
-//        UpdateInformation.InstallUpdate
-//      else
-//        UpdateInformation.GetAndInstallUpdate;
-//    end;
-//  end;
 end;
 
 procedure TfrmWebBrowserPopup.FormCreate(Sender: TObject);

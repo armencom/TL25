@@ -106,7 +106,8 @@ uses
   WebGet in 'WebGet.pas' {frmWebGet},
   OSIdentifier in 'OSIdentifier.pas',
   Security in 'Security.pas',
-  frmOption in 'frmOption.pas' {frmOptionDlg};
+  frmOption in 'frmOption.pas' {frmOptionDlg},
+  dlgDCYWarn in 'dlgDCYWarn.pas' {dlgDCYWarning};
 
 {$R *.res}
 
@@ -141,5 +142,6 @@ begin
   Application.CreateForm(TfrmGetStarted, frmGetStarted);
   Application.CreateForm(TdlgLogIn, dlgLogIn);
   Application.CreateForm(TdlgBackOffice, dlgBackOffice);
+  Application.CreateForm(TdlgDCYWarning, dlgDCYWarning);
   Application.Run;
 end.

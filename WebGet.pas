@@ -403,7 +403,7 @@ begin
     lblUN.caption := 'Account #:';
     apiID := 'ACTLOG';
   end
-  else if TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab' then begin
+  else if TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab' then begin
     txtAcct.Visible := true;
     lblAcct.Visible := true;
     cbWebLogin.enabled := false;
@@ -454,13 +454,6 @@ begin
   end;
   // do not import OFX if cxFrom is less than OFXMonths
   maxOFX := TradeLogFile.CurrentAccount.ImportFilter.OFXMonths;
-  if (Settings.LegacyBC) and (maxOFX > 0) //
-  and TradeLogFile.CurrentAccount.ImportFilter.OFXConnect //
-  and (now - maxOFX * 30 > cxFrom.date) then begin
-    cbWebLogin.enabled := false;
-    cbWebLogin.Checked := true;
-    cbWebLogin.Visible := true;
-  end;
   if TradeLogFile.CurrentAccount.FileImportFormat = 'optionsHouse' then
     caption := 'TradeMONSTER BrokerConnect'
   else
@@ -746,7 +739,7 @@ begin
     end;
   end
   // ------------------- Charles Schwab ----------------------------------
-  else if TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab' then begin
+  else if TradeLogFile.CurrentAccount.FileImportFormat = 'Schwab' then begin
     // make sure acct number has proper format ie: 1234-5678
     s := TradeLogFile.CurrentAccount.OFXaccount;
     if (pos('-', s)= 0)and(length(s)= 8) then
@@ -974,15 +967,6 @@ begin
   if cxTo.date>now() then cxTo.date:= dateOf(now()-1);
   // do not import OFX if cxFrom is less than OFXMonths
   maxOFX := TradeLogFile.CurrentAccount.ImportFilter.OFXMonths;
-  if (Settings.LegacyBC) and (maxOFX > 0) //
-  and TradeLogFile.CurrentAccount.ImportFilter.OFXConnect //
-  and (now - maxOFX * 30 > cxFrom.date) //
-  and (TradeLogFile.CurrentAccount.ImportFilter.FilterName <> 'Fidelity')
-  then begin
-    cbWebLogin.Enabled := false;
-    cbWebLogin.Checked := true;
-    cbWebLogin.Visible := true;
-  end;
   if impBaseline and ImpBL2 then begin
     blFromDate:= cxFrom.Date;
     cxTo.Date:= blToDate;

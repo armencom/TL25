@@ -31,7 +31,10 @@ type
 
     function ReadeRegal():Integer;
     function ReadETC():Integer;
-    function ReadETrade():Integer;
+
+    function ReadETradeOld():Integer;
+    function ReadETradeMS():Integer;
+
     function ReadExcel():Integer;
 
     function ReadFidelity():Integer;
@@ -50,7 +53,10 @@ type
     function ReadJPR():Integer;
 
     function ReadLightspeed():Integer;
+
+    function ReadMooMoo(): integer;
     function ReadMorganStanley(): integer;
+
     function ReadNinja(): integer;
 
     function ReadOpenECry():Integer;
@@ -89,7 +95,7 @@ type
     function ReadVanguard():Integer;
     function ReadVision():Integer;
 
-//    function ReadPlaid():Integer;
+    function ReadWebullOmni():Integer;
 
     function ReadPaste():Integer;
   end;
@@ -162,9 +168,14 @@ begin
   Result := ImportCSV.ReadETC;
 end;
 
-function TImportReadMethods.ReadETrade: Integer;
+function TImportReadMethods.ReadETradeOld: Integer;
 begin
-  Result := Import.ReadETrade;
+  Result := Import.ReadETradeOld;
+end;
+
+function TImportReadMethods.ReadETradeMS: Integer;
+begin
+  Result := Import.ReadETradeMS;
 end;
 
 function TImportReadMethods.ReadExcel: Integer;
@@ -225,6 +236,11 @@ end;
 function TImportReadMethods.ReadLightspeed: integer;
 begin
   Result := Import.ReadLightspeed;
+end;
+
+function TImportReadMethods.ReadMooMoo: Integer;
+begin
+  Result := Import.ReadMooMoo;
 end;
 
 function TImportReadMethods.ReadMorganStanley;
@@ -370,9 +386,9 @@ begin
   Result := Import.ReadVision;
 end;
 
-//function TImportReadMethods.ReadPlaid: Integer;
-//begin
-//  Result := Import.ReadPlaid;
-//end;
+function TImportReadMethods.ReadWebullOmni: Integer;
+begin
+  Result := Import.ReadWebullOmni;
+end;
 
 end.

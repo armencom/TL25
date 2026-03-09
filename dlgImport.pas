@@ -148,6 +148,7 @@ begin
     sm('Error: beginning of tax year date not set.');
     dtBegTaxYr := xStrToDate('01/01/' + taxyear, Settings.InternalFmt);
   end;
+  // ----------------------------------
   if (glbBLWizOpen = false) then begin // 2024-02-22 MB
     if (TradeLogFile.Count = 0) then begin
       cxFrom.date := dtBegTaxYr;
@@ -164,7 +165,7 @@ begin
     if cxTo.date > dtOct16ny then begin
       cxTo.date := dtOct16ny;
     end
-    else begin
+    else if TradeLogFile.CurrentAccount.FileImportFormat <> 'IB' then begin
       cxTo.date := dateOf(date-2); // or not past the day before yesterday
     end; // if cxTo.date
     // make sure from/to dates are not greater than the day before yesterday
@@ -179,10 +180,17 @@ begin
           cxFrom.date := dateOf(cxFrom.date+2); // change Sat to Mon
       end;
     end;
-    if cxTo.date >= now()-2 then begin // the day before yesterday
+    // --------------------------------
+    if TradeLogFile.CurrentAccount.FileImportFormat = 'IB' then begin
+      if cxTo.date >= now()-1 then begin // the day before yesterday
+        cxTo.date := dateOf(now()-1); //
+      end;
+    end
+    else if cxTo.date >= now()-2 then begin // the day before yesterday
       cxTo.date := dateOf(now()-2); //
-    end;
+    end; // ---------------------------
   end;
+  // ----------------------------------
   // do not import OFX if cxFrom is less than OFXMonths
   if (TradeLogFile.CurrentAccount.FileImportFormat = 'E-Trade')
   or (TradeLogFile.CurrentAccount.FileImportFormat = 'TradeStation')
@@ -236,15 +244,16 @@ begin
     else
       cxTo.Date:= dtJan31NY;
   end;
-  if cxTo.date>now() then cxTo.date:= dateOf(now()-1);
-  // do not import OFX if cxFrom is less than OFXMonths
-//  if (TradeLogFile.CurrentAccount.ImportFilter.OFXMonths > 0)
-//  and TradeLogFile.CurrentAccount.ImportFilter.OFXConnect
-//  and (now - TradeLogFile.CurrentAccount.ImportFilter.OFXMonths*30 > cxFrom.date)
-//  and (TradeLogFile.CurrentAccount.ImportFilter.FilterName <> 'Fidelity')
-//  then begin
-//    bWebLoad := true;
-//  end;
+  // ----------------------------------
+  if TradeLogFile.CurrentAccount.FileImportFormat = 'IB' then begin
+    if cxTo.date >= now() - 1 then begin // the day before yesterday
+      cxTo.date := dateOf(now() - 1); //
+    end;
+  end
+  else if cxTo.date >= now() - 2 then begin // the day before yesterday
+    cxTo.date:= dateOf(now() - 2);
+  end;
+  // ----------------------------------
   if impBaseline and ImpBL2 then begin
     blFromDate:= cxFrom.Date;
     cxTo.Date:= blToDate;
@@ -268,14 +277,6 @@ begin
   end
   else if bWebLoad then begin // means we are going to try to download data
     // limit imports to 12 months at a time
-//    if (TradeLogFile.CurrentAccount.FileImportFormat='TDAmeritrade') then begin
-//      if  (cxTo.Date > xStrToDate('12/31/' + taxyear, Settings.InternalFmt))
-//      and (cxFrom.Date < xStrToDate('02/01/' + taxyear, Settings.InternalFmt))
-//      then begin
-//        sm('TDAmeritrade limits trade history downloads to 12 months at a time!');
-//        cxTo.Date := xStrToDate('12/31/' + taxyear, Settings.InternalFmt);
-//      end;
-//    end;
     // do not allow importing past Jan 31
     if (TradeLogFile.NextTaxYear <> currentYear)
     and (cxTo.date > dtJan31NY)
@@ -285,10 +286,16 @@ begin
         + 'Adjusting end date.');
       cxTo.date:= dtJan31NY;
     end;
-    // cannot import past day before yesterday
-    if cxTo.date >= dateOf(now()-2) then begin
-      cxTo.Date:= dateOf(now()-2);
+    // ----------------------------------
+    if TradeLogFile.CurrentAccount.FileImportFormat = 'IB' then begin
+      if cxTo.date >= now() - 1 then begin // the day before yesterday
+        cxTo.date := dateOf(now() - 1); //
+      end;
+    end
+    else if cxTo.date >= now() - 2 then begin // the day before yesterday
+      cxTo.date:= dateOf(now() - 2);
     end;
+    // ----------------------------------
     // Fidelity does not allow downloads of more than 90 days, otherwise no data returned
     if  (TradeLogFile.CurrentAccount.FileImportFormat='Fidelity')
     and ( cxTo.IsFocused or rbMo.Checked ) then begin
@@ -343,8 +350,16 @@ begin
   dtDec31 := xStrToDate('12/31/'+Taxyear,Settings.InternalFmt);
   dtJan31NY := xStrToDate('01/31/'+nextTaxyear,Settings.InternalFmt);
   if rbMax.checked then begin
-    // import up to day before yesterday
-    cxTo.Date:= dateOf(date-2);
+    // ----------------------------------
+    if TradeLogFile.CurrentAccount.FileImportFormat = 'IB' then begin
+      if cxTo.date >= now() - 1 then begin // the day before yesterday
+        cxTo.date := dateOf(now() - 1); //
+      end;
+    end
+    else if cxTo.date >= now() - 2 then begin // the day before yesterday
+      cxTo.date:= dateOf(now() - 2);
+    end;
+    // ----------------------------------
     if TradeLogFile.CurrentAccount.FileImportFormat='Fidelity' then
       cxTo.Date:= dateOf(cxFrom.Date+90)
     else if (TradeLogFile.CurrentAccount.FileImportFormat='TradeStation')

@@ -602,6 +602,7 @@ implementation
 uses
   Main, winInet, Import, ClipBrd, TLRegister, Commission, // HelpMsg,
   Reports,
+  dlgDCYWarn,
   RecordClasses, cxCustomData, cxGridCustomTableView, cxFilter, myInput,
   SelectDateRange, frmOFX, Web, FileSave,
   frmOpTick, // used - see lastPos, myNewOptTicker, edTick
@@ -619,6 +620,7 @@ const
 var
   NewFile: TTLFile;
   bEditFileNow: boolean;
+
 
 // --------------------------
 function getHostName(myURL: string): string;
@@ -1462,7 +1464,6 @@ end;
 //   c. and if it will cost him a TaxFile
 // 2. IF it's a DB file...
 //   a. determine if the user has permission to open it
-//   b. and if it will cost him a TaxFile to do so
 // ---------------------------------------------------------
 procedure OpenTradeLogFile(LastFileName : string);
 var
@@ -1475,6 +1476,7 @@ var
   loadTime : TDateTime;
   txtFile : textFile;
   RowData : TStringList;
+  f : TdlgDCYWarning;
   // ---- Abort! -------
   procedure myFileClose;
   begin
@@ -1686,12 +1688,7 @@ begin
     // --------------------------------
     // save last file to last 4 files list
     SaveLastFileName(TrFileName);
-    // --------------------------------
     // setup quick start guide
-//    if TradeLogFile.Count = 0 then
-//      panelQS.doQuickStart(2, 1, True)
-//    else
-//      panelQS.doQuickStart(3, 1);
     // --------------------------------
   finally
     if isDBFile then begin
@@ -1766,6 +1763,16 @@ begin
       sm('WARNING: Wash Sale Settings' + cr //
           + 'are different from the default.');
     // --------------------------------
+    // 2026-02-03 MB - check for DCY and show warning if any found
+    if TradeLogFile.HasDCYType then begin
+      try
+        f := TdlgDCYWarning.create(nil);
+        f.showmodal;
+      finally
+        f.free;
+      end;
+    end; //
+    // --------------------------------
     if not panelSplash.visible then
       frmMain.cxGrid1.SetFocus;
     // --------------------------------
@@ -1773,13 +1780,11 @@ begin
     // --------------------------------
     if (sPW <> '') and (sPW = sPWreset) then begin
       mDlg('Your file password has been reset', mtInformation, [mbOK], 0);
-//      frmMain.mnuFile_Edit.click;
     end; // if sPWreset
     // --------------------------------
     // Does user need to edit file now?
     if isDBFile and bEditFileNow then begin
-//      if SuperUser then
-//        frmMain.mnuFile_Edit.click; // Edit File now!
+    // if SuperUser then frmMain.mnuFile_Edit.click; // Edit File now!
       bEditFileNow := false;
     end; // if isDBFile and bEditFileNow
     // --------------------------------
@@ -6026,7 +6031,6 @@ begin // EditCurrentImport
     glbAccountEdit := false;
   end;
 end; // EditCurrentImport
-
 
 
 initialization

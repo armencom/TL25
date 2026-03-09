@@ -1007,6 +1007,8 @@ begin
   Preview.Report.Variables.Variables['Accounts'] := QuotedStr(S);
   Preview.Report.Variables.Variables['Filter'] := QuotedStr(getFilter);
   Preview.Report.Variables.Variables['TaxYear'] := QuotedStr(TaxYear);
+  // 2026-02-09 MB - new for TaxYear 2025+
+  Preview.Report.Variables.Variables['TaxYear2'] := QuotedStr(rightstr(TaxYear, 2));
   // The next value used to be Settings.NameOnReports
   if ProHeader.taxFile <> '' then begin
     if lowercase(RightStr(ProHeader.taxFile, 4)) = '.tdf' then begin

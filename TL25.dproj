@@ -1207,6 +1207,10 @@
         <DCCReference Include="frmOption.pas">
             <Form>frmOptionDlg</Form>
         </DCCReference>
+        <DCCReference Include="dlgDCYWarn.pas">
+            <Form>dlgDCYWarning</Form>
+            <FormType>dfm</FormType>
+        </DCCReference>
         <None Include="Profiling\AQtimeModule1.aqt"/>
         <None Include="ImportFilters.cfg"/>
         <BuildConfiguration Include="Debug">

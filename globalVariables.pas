@@ -95,10 +95,10 @@ const
 
   DEBUG_EMAIL : string = 'mark@tradelogsoftware.com';
 
-  API_KEYv2 : string = '8?xP*o&zdA&Qa16oU$F9TCk@45$mS*'; // v2 API until <date>
-  API_KEY23 : string = '4d*T3S9kdhj#Ah87rQ&*&NJRe5!9#L'; // v2 API after <date>
-  API_KEYdev : string = 'de835869ae0fb9413f207482f4b4d47a19810c2c7171f4a0351ca02fc7fc4eec';
-  API_KEY25 : string = 'cf6cda8b7a8a0ccf24f3c23334490ce4a3b46b58d1e5523d6c0d35d12e72884d';
+//  API_KEYv2 : string = '8?xP*o&zdA&Qa16oU$F9TCk@45$mS*'; // v2 API until <date>
+//  API_KEY23 : string = '4d*T3S9kdhj#Ah87rQ&*&NJRe5!9#L'; // v2 API after <date>
+//  API_KEYdev : string = 'de835869ae0fb9413f207482f4b4d47a19810c2c7171f4a0351ca02fc7fc4eec';
+//  API_KEY25 : string = 'cf6cda8b7a8a0ccf24f3c23334490ce4a3b46b58d1e5523d6c0d35d12e72884d';
 // actual API Key used
 //  API_KEY : string = '8?xP*o&zdA&Qa16oU$F9TCk@45$mS*'; // live 2.0
   API_KEY : string = '4d*T3S9kdhj#Ah87rQ&*&NJRe5!9#L'; // live 2.5
@@ -112,6 +112,7 @@ const
 // each URL will be BASE + Ver + Func
 // EX: 'https://brokerconnect.live/api/v2.5/'
 // API_v2 : string = 'https://brokerconnect.live/api/v2/'; // live v2
+//
 // WHERE BASE can be either
 //    https://brokerconnect.live/api/
 // OR https://dev.brokerconnect.live/api/

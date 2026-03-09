@@ -500,8 +500,8 @@ var
       else if (Uppercase(lineLst[j]) = 'CANCELEDDATE') then begin //
         //  "CanceledDate":"2022-11-03 08:28:10.5340"}
         s := lineLst[j+1]; //
-        s2CancelDate := yyyymmddToUSDate(s);
-        v2CancelDate := APIdate(s);
+//        s2CancelDate := yyyymmddToUSDate(s); // 2026-02-13 MB - disabled per Ralph
+//        v2CancelDate := APIdate(s);
         k := k or 512;
       end;
       j := j + 2;
@@ -1978,7 +1978,6 @@ begin
     postHead := TStringStream.Create('');
     with postHead do begin
       WriteString('api: ' + GetAPIKey + sLineBreak);
-//      WriteString('api: de835869ae0fb9413f207482f4b4d47a19810c2c7171f4a0351ca02fc7fc4eec' + sLineBreak);
       WriteString('Content-Type: application/json' + sLineBreak);
       WriteString('charset: utf-8' + sLineBreak);
     end;
@@ -2166,6 +2165,7 @@ begin
       + '","year":"' + sYear //
       + '","optionroot":"' + sOptTick + '"}';
     // ----------------------------------------------------
+    s := postData; // hold in case it fails
     sStatus := ReadBrokerConnectPost(sURL, postHead, postData, 'POST');
     if pos('200 OK', sStatus) = 1 then begin
       // {

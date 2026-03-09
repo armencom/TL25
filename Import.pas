@@ -3,10 +3,12 @@
 interface
 
 uses
-  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms, Dialogs, Math,
-  StdCtrls, ExtCtrls, ComCtrls, OleCtrls, Buttons, StrUtils, CommDlg, ComObj,
+  Windows, Messages, SysUtils, Variants, Classes, //
+  Graphics, Controls, Forms, Dialogs, Math, //
+  StdCtrls, ExtCtrls, ComCtrls, OleCtrls, Buttons, //
+  StrUtils, CommDlg, ComObj, //
   IdGlobal, // needed to use function IsNumberic(str)
-  TLFile;
+  TLFile, TLImportOFX;
 
 // --------------------------
 // misc parsing functions
@@ -35,7 +37,7 @@ procedure ReverseImpTradesDate(R : integer);
 
 procedure SortImpByDate(R : integer);
 procedure SortImpByDateOC(b, e : integer);
-//procedure SortImpByDateOCNEW(b, e : integer);
+procedure SortImpByDateOCNEW(b, e : integer);
 
 function AssignShortSell : boolean;
 function AssignShortBuy : boolean;
@@ -61,8 +63,10 @@ function formatTime(tmStr : string): string;
 // function formatRJTopt(tick, dtStr: string; expOption: boolean): string;
 // still used by ReadSLK, but backward reference only, no need for prototype
 
-//procedure SaveStrToFile(const FileName : TFileName; const content : string);
+procedure SaveStrToFile(const FileName : TFileName; const content : string);
 procedure fixImpTradesOutOfOrder(R : integer);
+
+function CalcCommission(bBuy: boolean; dAmt, dQty, dPrc, dMul: double): double;
 
 // --------------------------
 // Import Filter Read Methods
@@ -80,7 +84,9 @@ function ReadCurvature(): integer;
 
 function ReadeRegal(): integer;
 
-function ReadETrade(): integer;
+function ReadETradeOld(): integer;
+function ReadETradeMS(): integer;
+
 function ReadExcel(bFromGrid : boolean = false): integer;
 
 function ReadFidelity(): integer;
@@ -101,6 +107,7 @@ function ReadJPR(): integer;
 function ReadLightspeed(): integer;
 
 function ReadManualEntry(bFromGrid : boolean = false): integer;
+function ReadMooMoo(): integer;
 function ReadMorganStanley(): integer;
 
 function readNinja(): integer;
@@ -140,6 +147,8 @@ function ReadUNX(): integer;
 function ReadVanguard(): integer;
 function ReadVision(): integer;
 
+function ReadWebullOmni(): integer;
+
 function ReadPassiv(): integer;
 
 //procedure readTXF;
@@ -150,13 +159,13 @@ procedure FileImport(PasteRecs : boolean; Baseline : boolean = false);
 procedure BCImport();
 
 var
-  BrownCo, ETProSWS, Penson2, bApexActivity, bMBTrading : boolean;
+  ETProSWS, Penson2, bApexActivity, bMBTrading, OFX : boolean;
   glNumCancelledTrades, LastI, optAssign : integer;
   Reordering, TDWyearend, TDWmonthly, delRecNoSave, EtradeXLS, etradeHist : boolean;
   changedFuturesList : TList;
   ImpStrList : TStringList; // many routines assume access to this.
   OFXDateStart, OFXDateEnd : TDateTime;
-//  OFXFile : string;
+  OFXFile : string;
 
   // from FileImport
   impTicksList : TStringList;
@@ -203,11 +212,10 @@ var
   Etrade1099, EtradeCSV : boolean;
   openTrList : array of TTradesOpen;
   TSweb : boolean;
-//  isOFX,
-  bcImp : boolean;
+  isOFX, bcImp : boolean;
   Shares, Amt, Price : double;
   ClipTxt, tick, dte : string;
-//  OFXImport : TTLImport;
+  OFXImport : TTLImport;
 
 
 function numToMon(monNum :string):string;
@@ -575,6 +583,15 @@ end;
 // ------------------------------------
 //
 // ------------------------------------
+function CalcCommission(bBuy: boolean; dAmt, dQty, dPrc, dMul: double): double;
+begin
+  if bBuy then begin // buy logic
+    result := abs(dAmt) - abs(dQty*dPrc*dMul);
+  end else begin // sell logic
+    result := abs(dQty*dPrc*dMul) - abs(dAmt);
+  end;
+end;
+
 procedure FixPrCmAmt(var pr, cm, Amt : double; BuySell, Fix : string);
 begin
   if Fix = 'p' then begin
@@ -1297,7 +1314,7 @@ begin
         if importFilter.FilterName = 'Lightspeed' then
           result := ETProSWS
         else if importFilter.FilterName = 'E-Trade' then
-          result := EtradeCSV or BrownCo;
+          result := EtradeCSV;
 //        else if importFilter.FilterName = 'Fidelity' then
 //          result := importingOFX;
       end;
@@ -1328,7 +1345,7 @@ begin
       if TradeLogFile.CurrentAccount.importFilter.FilterName = 'Lightspeed' then
         result := ETProSWS
       else if TradeLogFile.CurrentAccount.importFilter.FilterName = 'E-Trade' then
-        result := EtradeCSV or BrownCo;
+        result := EtradeCSV;
 //      else if TradeLogFile.CurrentAccount.importFilter.FilterName = 'Fidelity' then
 //        result := importingOFX;
     end;
@@ -5202,9 +5219,360 @@ begin // ReadEtradeXLS
   end;
 end;
 
+// --------------------------------------------------------
+// for ETrade+MorganStanley XLSX, XLS, and CSV (after 2026)
+// --------------------------------------------------------
+function ReadETradeXLSX(ImpStrList : TStringList): integer;
+var
+  i, k, R, numFields : integer;
+  iDt, iOC, iTk, iShr, iPr, iAmt, iCUSIP, iDesc : integer; // import field numbers
+  sTmp, line, junk, NextDate, descr, ImpDate, oc, ls, sTick,
+   PrStr, prfStr, AmtStr, ShStr : string;
+  opTick, opUnder, opStrike, opYr, opMon, opDay, opCP : string;
+  sep : Char;
+  Shares, Amount, Commis, Net, mult : double;
+  contracts, cancels, ImpNextDateOn, divReinv, bFoundHeader : boolean;
+  fieldLst : TStrings; // for parsing individual lines
+  //
+  procedure SetFieldNumbers();
+  var
+    j : integer;
+  begin
+    // find/map ETrade XLSX fields
+    k := 0;
+    for j := 0 to (fieldLst.Count - 1) do begin
+      if (fieldLst[j] = 'TRANSACTION DATE') //
+      or (fieldLst[j] = 'TRANSACTIONDATE') //
+      then begin
+        iDt := j;
+        k := k or 1;
+      end
+      else if (pos('ACTIVITY', fieldLst[j]) = 1) // for 'BOUGHT' or 'SOLD'
+           or (fieldLst[j] = 'TRANSACTIONTYPE') //
+      then begin
+        iOC := j;
+        k := k or 2;
+      end
+      else if (fieldLst[j] = 'DESCRIPTION') //
+      then begin
+        iDesc := j;
+        iAmt := j;
+        k := k or 4;
+      end
+      else if (fieldLst[j] = 'SYMBOL') //
+      then begin
+        iTk := j;
+        k := k or 8;
+      end
+      else if (fieldLst[j] = 'CUSIP') //
+      then begin
+        iCUSIP := j;
+      end
+      else if (pos('QUANTITY', fieldLst[j]) = 1) //
+      then begin
+        iShr := j;
+        k := k or 16;
+      end
+      else if (pos('PRICE', fieldLst[j]) = 1) //
+      then begin
+        iPr := j;
+        k := k or 32;
+      end
+      else if (pos('AMOUNT', fieldLst[j]) = 1) //
+      then begin
+        iAmt := j;
+        k := k or 64;
+      end;
+    end;
+  end;
+  //
+  function DecodeOptDescr(var sTk : string) : string;
+  var
+    n : integer;
+    opYr, opMon, opDay, opStrike, opCP, opTk, opStrik2 : string;
+  begin
+    // Reset all local vars
+    opCP := '';
+    opTk := '';
+    opMon := '';
+    opDay := '';
+    opYr := '';
+    opStrike := '';
+    opStrik2 := '';
+    // CALL ZETA   11/28/25    18.000
+    // PUT  APLD   06/06/25    13.000
+    // C/P--Ticker-mm/dd/yy-strike$$-
+    // 0    0   1  1      2         3
+    // 123456789012345678901234567890
+    opCP := trim(copy(sTk, 1, 5));
+    opTk := trim(copy(sTk, 6, 7));
+    opMon := copy(sTk, 13, 2);
+    opMon := getExpMo(opMon);
+    opDay := copy(sTk, 16, 2);
+    opYr := copy(sTk, 19, 2);
+    opStrike := trim(copy(sTk, 21, 10));
+    opStrike := delTrailingZeros(opStrike); // for matching
+    result := opTk + ' ' + opDay + opMon + opYr + ' ' + opStrike + ' ' + opCP;
+  end;
+  //
+  function DecodeOptTk(var sTk : string) : string;
+  var
+    n : integer;
+    opYr, opMon, opDay, opStrike, opCP, opStrik2 : string;
+  begin
+    // Reset all local vars
+    opStrike := '';
+    opStrik2 := '';
+    opYr := '';
+    opMon := '';
+    opDay := '';
+    opCP := '';
+    opYr := copy(sTk, 1, 2);
+    opMon := copy(sTk, 3, 2);
+    opMon := getExpMo(opMon);
+    opDay := copy(sTk, 5, 2);
+    opCP := copy(sTk, 7, 1);
+    if opCP = 'C' then
+      opCP := 'CALL'
+    else
+      opCP := 'PUT';
+    opStrike := copy(sTk, 8, 5);
+    opStrik2 := copy(sTk, 13, 3);
+    n := strToInt(opStrike);
+    opStrike := IntToStr(n); // removes leading zeros
+    n := strToInt(opStrik2);
+    if (n > 0) then
+      opStrike := opStrike + '.' + IntToStr(n);
+    opStrike := delTrailingZeros(opStrike); // for matching
+    result := opDay + opMon + opYr + ' ' + opStrike + ' ' + opCP;
+  end;
+  //
+begin // ReadETradeXLSX
+  Commis := 0;
+  Net := 0;
+  R := 0;
+  setLength(ImpTrades, R); // max size
+  sep := TAB; // 2021-12-17 MB
+  // --------------------------------
+  bFoundHeader := false;
+  DataConvErrRec := '';
+  DataConvErrStr := '';
+  cancels := false;
+  ImpNextDateOn := false;
+  GetImpDateLast;
+  if ImpStrList.Count < 1 then begin
+    result := 0;
+    exit;
+  end;
+  //
+  for i := 0 to (ImpStrList.Count - 1) do begin
+    line := ImpStrList[i];
+    line := uppercase(line); // search line for UPPERCASE tokens...
+    tick := '';
+    if line = '' then
+      Continue;
+    if replacestr(line, ',', '') = '' then begin
+      Continue;
+    end;
+    // parse all columns into string list
+    fieldLst := ParseCSV(line, sep); // try TAB first
+    // ------------------------------
+    if not bFoundHeader then begin
+      if (pos('SYMBOL', line) > 0) //
+        and (pos('QUANTITY', line) > 0) //
+        and (pos('AMOUNT', line) > 0) //
+      then begin
+        if fieldLst.Count < 5 then begin
+          Continue;
+        end;
+        SetFieldNumbers;
+        numFields := fieldLst.Count;
+        if SuperUser and (k <> 127) then
+          sm('there appear to be fields missing.');
+        bFoundHeader := true; // don't do this anymore
+        R := 0; // start now
+      end;
+      Continue; // don't process anything until we recognize the header
+    end;
+    if fieldLst.Count > numFields then begin
+      DataConvErrRec := DataConvErrRec + line + cr;
+      Continue; // record has extra commas!
+    end;
+    // ------------------------------
+    if pos('ERROR', line) > 0 then begin
+      sm('The broker reported an error in the data.' + cr //
+          + 'Please reduce the date range and try again.');
+      result := 0;
+      exit;
+    end;
+    // --------------------
+    // [iDt] Trade Date
+    sTmp := trim(fieldLst[iDt]);
+    if (sTmp = '') then begin
+      if (R < 1) then
+        Continue // silently skip beginning blanks
+      else
+        break; // done if find blank line after valid line(s).
+    end;
+    if not isdate(sTmp) then begin
+      if (R > 0) then
+        break; // must be done.
+      Continue;
+    end;
+    if not ValidTradeDate(sTmp, ImpDateLast, ImpNextDateOn) then
+      Continue;
+    ImpDate := sTmp;
+    // --------------------
+    // DE: do not import expires and assigns because we don't know if short or lomg!!!
+    sTick := trim(fieldLst[iTk]); // ticker
+    descr := fieldLst[iDesc];
+    // --------------------
+    // reset local vars
+    // --------------------
+    prfStr := 'STK-1'; // default
+    mult := 1;
+    opTick := '';
+    contracts := false;
+    divReinv := false;
+    // --------------------
+    ls := 'L'; // assume
+    sTmp := fieldLst[iOC];
+    if (sTmp = 'BOUGHT') then
+      oc := 'O'
+    else if (sTmp = 'BOUGHT TO OPEN') then
+      oc := 'O'
+    else if (sTmp = 'SOLD') then
+      oc := 'C'
+    else if (sTmp = 'SOLD TO CLOSE') then
+      oc := 'C'
+    else if (sTmp = 'SOLD SHORT') then begin
+      oc := 'O';
+      ls := 'S';
+    end
+    else if (sTmp = 'BOUGHT TO COVER') then begin
+      oc := 'C';
+      ls := 'S';
+    end
+    else if (sTmp = 'DIVIDEND REINVESTMENT') then begin
+      oc := 'O'; // 2020-11-03 MB - added DRiP trades
+      divReinv := true;
+    end
+    else if (sTmp = 'DIVIDEND') then begin
+      if (pos('DIVIDEND REINVESTMENT', fieldLst[iDesc]) > 0) //
+      then begin
+        oc := 'O'; // 2026-02-12 MB - added DRiP trades
+        divReinv := true;
+      end;
+    end
+    else // activity type is beyond scope of import - MB
+      Continue;
+    // --------------------
+    inc(R); // get this far, count it.
+    // --------------------
+//    if (sTick = '--') then
+//      sTick := trim(fieldLst[iCUSIP]);
+//    if (sTick = '--') then
+//      sTick := descr;
+    // Check symbol for option trade
+    if (pos('CALL ', descr)=1) //
+    or (pos('PUT ', descr)=1) then begin
+      junk := trim(descr);
+      if length(junk) = 30 then begin // the right size
+        sTick := DecodeOptDescr(junk);
+        contracts := true;
+        prfStr := 'OPT-100';
+        mult := 100;
+      end;
+    end
+    else if (pos(' ', sTick) > 0) then begin
+      // AAPL 181102P00215000 --> AAPL 02NOV18 215 PUT
+      junk := sTick;
+      sTick := parsefirst(junk, ' ');
+      junk := trim(junk);
+      if length(junk) = 15 then begin // the right size
+        sTick := sTick + ' ' + DecodeOptTk(junk);
+        contracts := true;
+        prfStr := 'OPT-100';
+        mult := 100;
+      end;
+//    end
+//    else if divReinv then begin
+//      prfStr := 'DRP-1';
+    end;
+    // --------------------
+    ShStr := fieldLst[iShr];
+    PrStr := fieldLst[iPr];
+    AmtStr := fieldLst[iAmt];
+    // --------------------
+    if trim(ShStr) = '' then begin
+      dec(R); // especially dividends that are not divReinv!
+      Continue;
+    end;
+    try
+      Shares := StrToFloat(ShStr, Settings.InternalFmt);
+      if Shares = 0 then begin
+        dec(R); // especially dividends that are not divReinv!
+        Continue;
+      end;
+      Shares := ABS(Shares);
+      // --------------------
+      Price := StrToFloat(PrStr, Settings.InternalFmt);
+      Price := ABS(Price);
+      // --------------------
+      if (leftStr(AmtStr, 1)= '(') and (rightStr(AmtStr, 1)= ')') then
+        AmtStr := '-' + copy(AmtStr, 2, length(AmtStr)- 2);
+      Amount := CurrToFloat(AmtStr);
+      Amount := ABS(Amount);
+      // --------------------
+      // check for obvious errors:
+      if ABS(Amount -(Shares * Mult * Price)) > ABS(0.5 * Amount) then begin
+        DataConvErrRec := DataConvErrRec //
+          + 'shares*price not even close to amount:' + CRLF //
+          + floattostr(Shares) + '*$' + floattostr(Price) + ' >< $' + floattostr(Amount) + CRLF //
+          + line + CRLF;
+      end;
+      // --------------------
+      // comm
+      if ((oc = 'C') and (ls = 'L')) // SELL
+      or ((oc = 'O') and (ls = 'S')) then begin
+        Commis := CalcCommission(false, Amount, Shares, Price, mult); // Amount - (Shares * mult * Price);
+      end
+      else begin // BUY
+        Commis := CalcCommission(true, Amount, Shares, Price, mult); // (Shares * mult * Price) - Amount;
+      end;
+      // --------------------
+      if high(ImpTrades) < R then
+        setLength(ImpTrades, R + 1);
+      ImpTrades[R].DT := ImpDate;
+      ImpTrades[R].oc := oc;
+      ImpTrades[R].ls := ls;
+      ImpTrades[R].tk := trim(sTick);
+      ImpTrades[R].prf := prfStr;
+      ImpTrades[R].sh := Shares;
+      ImpTrades[R].pr := Price;
+      ImpTrades[R].am := Amount;
+      ImpTrades[R].cm := rndto2(Commis);
+    except
+      on E : Exception do begin
+        DataConvErrRec := DataConvErrRec + E.ClassName + ': ' + E.Message + cr + line + cr;
+        dec(R);
+        Continue;
+      end;
+    end;
+    ImpTrades[R].it := TradeLogFile.Count + R;
+    // ------------------------------------------
+  end; // for loop
+  if R = 0 then begin
+    result := -1;
+    exit;
+  end;
+  ReverseImpTradesDate(R);
+  result := R;
+end; // ReadETradeXLSX
+
 
 // ------------------------------------
-function ReadETrade(): integer;
+function ReadETradeOld(): integer;
 var
   i, R : integer;
   OrderNum, LastOrderNum : string;
@@ -5248,7 +5616,55 @@ begin
   finally
     ImpStrList.Destroy;
   end;
-end; // ReadETrade
+end; // ReadETradeOld
+
+
+// ------------------------------------
+function ReadETradeMS(): integer;
+var
+  i, R : integer;
+  OrderNum, LastOrderNum : string;
+  ImpNextDateOn : boolean;
+begin
+  DataConvErrRec := '';
+  DataConvErrStr := '';
+  OrderNum := '';
+  LastOrderNum := '';
+  R := 0;
+  ImpNextDateOn := false;
+  ImpStrList := TStringList.Create;
+  ImpStrList.clear; // initialize memory
+  try
+    ImpTrades := nil;
+    setLength(ImpTrades, R + 1);
+    GetImpDateLast;
+    // --------------------------------
+    // options: File, BC
+    if sImpMethod = 'BC' then begin // imBrokerConnect:
+      formGet.showmodal;
+      if cancelURL then
+        exit;
+        GetImpStrListFromWebGet(false);
+      result := ReadEtradeXLS(ImpStrList);
+      exit;
+    end
+    // --------------------------------
+    else if sImpMethod = 'File' then begin // imFileImport: CSVImport
+      EtradeCSV := true;
+      GetImpStrListFromFile('ETrade-MS', 'xlsx', '');
+      result := ReadEtradeXLSX(ImpStrList);
+//    end
+//    // --------------------------------
+//    else if sImpMethod = 'Web' then begin //
+//      GetImpStrListFromWebGet(false);
+//      result := ReadEtradeXLS(ImpStrList);
+//      exit;
+    end; // case of ImportMethod
+    // ------------------------------------------
+  finally
+    ImpStrList.Destroy;
+  end;
+end; // ReadETradeMS
 
 
 // ------------------------------------
@@ -5349,21 +5765,32 @@ begin
         exit;
       end;
       sep := ',';
+      // --- original format ---
       // 0. ACCOUNT	        xxx
       // 1. ACTIVITY DATE   07/20/2016
       // 2. SETTLEMENT DATE 07/21/2016
       // 3. ACTIVITY        Bought
       // 4. QUANTITY        200
       // 5. DESCRIPTION     PUT STANDARD & POORS DEP REC AT 205.000 EXPIRES 08/19/2016
-      // OPENING
-      // PREFERENTIAL RATE
-      // Ref: 202Q5662 SEC ID: ERT15
+      //                    OPENING
+      //                    PREFERENTIAL RATE
+      //                    Ref: 202Q5662 SEC ID: ERT15
       // 6. SYMBOL/CUSIP    SPY 160819P00205000
       // 7. PRICE ($)       0.46
       // 8. AMOUNT ($)      -9,206.00
       // 9. CASH BALANCE($)* 0
       // 10. COMM ($)
       // 11. TYPE           Long Margin
+      // --- another MS format ---
+      // 0. TransactionDate
+      // 1. TransactionType
+      // 2. SecurityType
+      // 3. Symbol
+      // 4. Quantity
+      // 5. Amount
+      // 6. Price
+      // 7. Commission
+      // 8. Description
       // --- Date ---
       ImpDate := lineLst[1];
       if length(ImpDate) > 10 then
@@ -5563,6 +5990,268 @@ begin
 end;
 
 
+         // -----------------
+         // MooMoo
+         // -----------------
+
+function ReadMooMooCSV(ImpStrList : TStringList) : integer;
+var
+  i, j, k, start, eend, R, Q : integer;
+  iDt, iOC, iTk, iDesc, iShr, iPr, iAmt : integer; // import field numbers
+  junk, sep, ImpDate, PrStr, AmtStr, ShStr, line, prfStr, //
+    oc, ls, dd, mm, yyyy, errLogTxt : string;
+  dtTrade : TDateTime;
+  Amount, Commis, Fees, Shares, mult : double;
+  contracts, Adj, optExpEx, ImpNextDateOn, bonds, newColFormat, //
+    miniOptions, futures, bFoundHeader, cancels, assigns : boolean;
+  fieldLst : TStrings;
+  // --- MooMoo --------
+  // OC Side (eg BUY, SELL)
+  // TK Symbol
+  // DE Name
+  //    Order Price
+  //    Order Qty
+  //    Order Amount
+  //    Status (e.g. Filled)
+  //    Filled@Avg Price
+  // DT Order Time (MMM DD, YYYY HH:MM:SS TZ)
+  //    Order Type
+  //    . . .
+  // SH Fill Qty
+  // PR Fill Price
+  // AM Fill Amount (eg. 5,356.16)(no $, has comma)
+  //    Fill Time
+  // ----------------------------------
+  procedure SetFieldNumbers();
+  var
+    j : integer;
+  begin
+    // find/map MooMoo CSV fields
+    k := 0;
+    for j := 0 to (fieldLst.Count - 1) do begin
+      if fieldLst[j] = 'ORDER TIME' then begin // MM/DD/YYYY
+        iDt := j;
+        k := k or 1;
+      end
+      else if fieldLst[j] = 'SIDE' then begin // SELL or BUY
+        iOC := j;
+        k := k or 2;
+      end
+      else if (fieldLst[j] = 'FILL QTY') then begin // Shares/Contracts
+        iShr := j;
+        k := k or 4;
+      end
+      else if fieldLst[j] = 'SYMBOL' then begin // Ticker
+        iTk := j;
+        k := k or 8;
+      end
+      else if fieldLst[j] = 'NAME' then begin // DESC.
+        iDesc := j;
+        k := k or 16;
+      end
+      else if fieldLst[j] = 'FILL PRICE' then begin
+        iPr := j;
+        k := k or 32;
+      end
+      else if fieldLst[j] = 'FILL AMOUNT' then begin // Comm
+        iAmt := j;
+        k := k or 64;
+      end; // note: 'RATE' field is conversion factor
+    end;
+  end;
+// --------------------------------------------
+begin
+  bFoundHeader := false; // haven't found the header yet
+  DataConvErrRec := '';
+  // in case these are missing, flag to skip them.
+  cancels := false;
+  R := 0;
+  // ----------------------------------
+  try
+    if ImpStrList.Count < 1 then begin
+      ImpStrList.Destroy;
+      result := 0;
+      exit;
+    end;
+    // -----------------
+    DataConvErrRec := '';
+    DataConvErrStr := '';
+    Adj := false;
+    ImpNextDateOn := false;
+    newColFormat := false;
+    // -----------------
+    // 2020-07-24 MB - for now, we'll only support stocks
+    prfStr := 'STK-1';
+    mult := 1;
+    // -----------------
+    fieldLst := TStrings.Create;
+    // --------------------------------
+    i := -1;
+    while i < (ImpStrList.Count - 1) do begin
+      inc(i); // make it work like a for/next
+      contracts := false; // reset flags
+      assigns := false;
+      futures := false;
+      miniOptions := false;
+      optExpEx := false;
+      bonds := false;
+      // ------------------------------
+      line := ImpStrList[i];
+      line := uppercase(line); // search line for UPPERCASE tokens...
+      // parse all columns into string list
+      fieldLst := ParseCSV(line);
+      if not bFoundHeader then begin
+        if (pos('ORDER TIME', line) > 0) //
+        and (pos('ORDER QTY', line) > 0) //
+        and (pos('SYMBOL', line) > 0) then begin
+          SetFieldNumbers;
+          if SuperUser and (k <> 127) then
+            sm('there appear to be fields missing.');
+          bFoundHeader := true; // don't do this anymore
+          R := 0; // start now
+        end;
+        Continue; // don't process anything until we recognize the header
+      end;
+      // ------------------------------
+      if pos('ERROR', line) > 0 then begin
+        DataConvErrRec := DataConvErrRec + ImpStrList[i] + cr;
+        sm('Ninja reported an error.' + cr //
+          + 'Please reduce the date range and try again.');
+        result := 0;
+        exit;
+      end;
+      // ------------------------------
+      // --- Date ---------------------
+      // ------------------------------
+      ImpDate := fieldLst[iDt]; // format: M/DD/YYYY
+      if Trim(ImpDate)='' then continue; // mandatory
+      try
+        dtTrade := ConvertCustomDateTime(ImpDate);
+      except
+        continue; // need valid dates only
+      end;
+      ImpDate := DateToStr(dtTrade);
+      if pos('/', ImpDate) = 2 then
+        ImpDate := '0' + ImpDate;
+      if not isdate(ImpDate) then
+        sm('Cannot determine the transaction date of this trade:' + cr + line);
+      if not ValidTradeDate(ImpDate, ImpDateLast, ImpNextDateOn) then begin
+// DataConvErrRec := DataConvErrRec + 'invalid date: ' + ImpStrList[i] + cr;
+        Continue;
+      end;
+      if UserDateStrNotGreater(ImpDate, ImpDateLast) then begin
+        if mDlg('Trades already imported for ' + ImpDate + cr //
+            + cr //
+            + 'Continue?', mtWarning, [mbNo, mbYes], 0) = mrNo then begin
+          result := R;
+          exit;
+        end
+        else
+          ImpDateLast := '01/01/1900';
+      end;
+      // --- ticker -------------------
+      tick := trim(fieldLst[iTk]);
+      if tick = '' then
+        tick := trim(fieldLst[iDesc]);
+      // --- OC and LS ----------------
+      junk := trim(fieldLst[iOC]);
+      if (junk = 'BUY') then begin
+        oc := 'O';
+        ls := 'L';
+      end
+      else if (junk = 'SELL') then begin
+        oc := 'C';
+        ls := 'L';
+      end
+      else begin
+        oc := 'E'; // error
+        ls := 'E';
+        Continue;
+      end;
+      // --- # shares -----------------
+      ShStr := fieldLst[iShr];
+      ShStr := delCommas(ShStr);
+      if trim(ShStr) = '' then continue; // mandatory
+      // ------------------------------
+      inc(R); // if it gets this far, count it
+      // --- price --------------------
+      PrStr := fieldLst[iPr];
+      delete(PrStr, pos('$', PrStr), 1);
+      PrStr := delCommas(PrStr);
+      if (xStrToFloat(PrStr) = 0) then
+        PrStr := '0.00';
+      // --- Amount -------------------
+      Amount := 0;
+      AmtStr := fieldLst[iAmt];
+      delete(AmtStr, pos('$', AmtStr), 1);
+      AmtStr := delCommas(AmtStr);
+      if (xStrToFloat(AmtStr) = 0) then
+        AmtStr := '0.00';
+      // --- Commission ---------------
+      Commis := 0;
+      try
+        Shares := CurrToFloat(ShStr);
+        if Shares < 0 then
+          Shares := -Shares;
+        // ----------------------------
+        Price := CurrToFloat(PrStr);
+        if Price < 0 then
+          Price := -Price;
+        // ----------------------------
+        Amount := CurrToFloat(AmtStr);
+        if (((oc = 'O') and (ls = 'L')) or ((oc = 'C') and (ls = 'S'))) then
+          Commis := Amount - (Price * Shares * mult)
+        else
+          Commis := (Shares * Price * mult) - Amount;
+        // ----------------------------
+        ImpTrades[R].it := TradeLogFile.Count + R;
+        ImpTrades[R].DT := ImpDate;
+        ImpTrades[R].oc := oc;
+        ImpTrades[R].ls := ls;
+        ImpTrades[R].tk := tick;
+        ImpTrades[R].sh := Shares;
+        ImpTrades[R].pr := Price;
+        ImpTrades[R].prf := prfStr;
+        ImpTrades[R].cm := Commis;
+        ImpTrades[R].am := Amount;
+      except
+        DataConvErrRec := DataConvErrRec + ImpStrList[i] + cr;
+        dec(R);
+        Continue;
+      end;
+    end; // while
+    ImpStrList.Destroy;
+    ReverseImpTradesDate(R);
+    result := R;
+  finally
+    // ReadMooMooCSV
+  end;
+end;
+
+// ENTRY POINT
+function ReadMooMoo(): integer;
+var
+  i, R : integer;
+  NextDate, ImpDate, CmStr, PrStr, prfStr, AmtStr, ShStr : string;
+  line, sep, oc, ls : string;
+  Shares, Amount, Commis : double;
+  contracts, ImpNextDateOn : boolean;
+begin
+  try
+    R := 0;
+    ImpStrList := TStringList.Create;
+    ImpTrades := nil;
+    setLength(ImpTrades, R + 1);
+    GetImpDateLast;
+    // ----------------------
+    GetImpStrListFromFile('TRowe Price', 'csv', ''); // Import from CSV file
+    result := ReadMooMooCSV(ImpStrList);
+  finally
+    // ReadMooMoo
+  end;
+end;
+
+
 // ------------------------------------
 function ReadMorganStanleyXLS : integer;
 // -------------------------------------
@@ -5701,8 +6390,6 @@ var
 // ----------------------------------
 begin // ReadMorganStanleyXLS
   // ----------------------------------
-  DataConvErrRec := '';
-  DataConvErrStr := '';
   Commis := 0;
   Net := 0;
   R := 0;
@@ -5849,7 +6536,7 @@ begin // ReadMorganStanleyXLS
       end;
       // --------------------
       // check for obvious errors:
-      if ABS(Amount -(Shares * Price)) > ABS(0.5 * Amount) then
+      if ABS(Amount -(Shares * mult * Price)) > ABS(0.5 * Amount) then
         DataConvErrRec := DataConvErrRec //
           + 'shares*price not even close to amount:' + CRLF //
           + floattostr(Shares) + '*$' + floattostr(Price) + ' >< $' + floattostr(Amount) + CRLF //
@@ -9352,7 +10039,7 @@ end;
 function ReadHilltopCSV(): integer;
 var
   i, j, k, n, start, eend, R, Q : integer;
-  iDt, iTm, iTyp, iOC, iLS, iTk, iDesc, iShr, iPr, iAmt : integer; // import field numbers
+  iDt, iTm, iTyp, iOC, iLS, iTk, iDesc, iShr, iPr, iAmt, iMax : integer; // import field nums
   junk, sep, ImpDate, ImpTime, oc, ls, line, typeStr, sTk : string;
   CmStr, feeStr, PrStr, AmtStr, ShStr, errLogTxt : string;
   optOC, opExpDt, opFmt, opYr, opMon, opDay, opStrike, opCP, optTick, optDesc, opStrik2 : string;
@@ -9395,43 +10082,52 @@ var
     iShr := 0;
     iPr := 0;
     iAmt := 0;
+    iMax := 0;
     // ------------
     for j := 0 to (fieldLst.Count - 1) do begin
       if fieldLst[j] = 'ENTRY DATE' then begin // Date/Time
         iDt := j;
         k := k or 1;
+        if j > iMax then iMax := j;
       end
       else if (fieldLst[j] = 'SYMBOL') // CSV
-        or (fieldLst[j] = 'SECURITY') // XLSX
+      or (fieldLst[j] = 'SECURITY') // XLSX
       then begin // Ticker
         iTk := j;
         k := k or 2;
+        if j > iMax then iMax := j;
       end
       else if fieldLst[j] = 'TRANSACTION' then begin // BOT, SOLD,
         iOC := j;
         k := k or 4;
+        if j > iMax then iMax := j;
       end
       else if fieldLst[j] = 'DESCRIPTION' then begin // option ticker
         iDesc := j;
         k := k or 8;
+        if j > iMax then iMax := j;
       end
       else if fieldLst[j] = 'SECURITY TYPE' then begin // Equity/Options
         iTyp := j;
         k := k or 16;
+        if j > iMax then iMax := j;
       end
       else if (fieldLst[j] = 'QUANTITY') then begin // Shares/Contracts
         iShr := j;
         k := k or 32;
+        if j > iMax then iMax := j;
       end
       else if trim(fieldLst[j]) = 'PRICE ($)' then begin
         iPr := j;
         k := k or 64;
+        if j > iMax then iMax := j;
       end
       else if fieldLst[j] = 'NET AMOUNT ($)' then begin // Amount
         iAmt := j;
         k := k or 128;
+        if j > iMax then iMax := j;
       end; // note: 'RATE' field is conversion factor
-    end;
+    end; // for loop
   end;
   // ----------------------------------
   function FormatExpDate(sDate : string): string;
@@ -9482,6 +10178,7 @@ var
     j, n : integer;
   begin
     result := sTk; // initial value
+    opStrik2 := '';
     // --------------------
     if opCP = 'C' then
       opCP := 'CALL'
@@ -9587,7 +10284,6 @@ var
     if opFmt = '?' then
       sm('unable to determine format of expiration dates.');
   end;
-
 // --------------------------------------------
 begin // ReadHilltopCSV
   // 1. find headers
@@ -9644,6 +10340,14 @@ begin // ReadHilltopCSV
             + 'Please reduce the date range and try again.');
         result := 0;
         exit;
+      end;
+      // ------------------------------
+      if fieldLst.Count < iMax then begin
+        if SuperUser then begin
+          sm('bad record #:' + IntToStr(i) + CRLF //
+            + line);
+        end;
+        continue;
       end;
       // --- ticker -------------------
       tick := trim(fieldLst[iTk]);
@@ -10423,15 +11127,14 @@ begin
       for i := 1 to R do begin
         // statBar('Matching Cancelled Trades: '+intToStr(i));
         for j := 1 to R do begin
-          if (ImpTrades[i].oc = 'X') and (ImpTrades[i].no <> '') and
-            (ImpTrades[i].tk = ImpTrades[j].tk) and (ImpTrades[i].no = ImpTrades[j].no) and
-            (format('%1.5f', [ImpTrades[i].sh], Settings.UserFmt) = format('%1.5f',
-              [ImpTrades[j].sh], Settings.UserFmt)) and
-            (format('%1.5f', [ImpTrades[i].pr], Settings.UserFmt) = format('%1.5f',
-              [ImpTrades[j].pr], Settings.UserFmt)) and
-            (format('%1.5f', [ImpTrades[i].cm], Settings.UserFmt) = format('%1.5f',
-              [-ImpTrades[j].cm], Settings.UserFmt)) and (ImpTrades[j].oc <> '') and (i <> j) then
-          begin
+          if (ImpTrades[i].oc = 'X') and (ImpTrades[i].no <> '') //
+          and (ImpTrades[i].tk = ImpTrades[j].tk) //
+          and (ImpTrades[i].no = ImpTrades[j].no) //
+          and (format('%1.5f', [ImpTrades[i].sh], Settings.UserFmt) = format('%1.5f', [ImpTrades[j].sh], Settings.UserFmt)) //
+          and (format('%1.5f', [ImpTrades[i].pr], Settings.UserFmt) = format('%1.5f', [ImpTrades[j].pr], Settings.UserFmt)) //
+          and (format('%1.5f', [ImpTrades[i].cm], Settings.UserFmt) = format('%1.5f', [-ImpTrades[j].cm], Settings.UserFmt)) //
+          and (ImpTrades[j].oc <> '') and (i <> j) //
+          then begin
             glNumCancelledTrades := glNumCancelledTrades + 2;
             ImpTrades[i].oc := ''; // i
             ImpTrades[i].ls := '';
@@ -14299,7 +15002,7 @@ begin
     DataConvErrRec := '';
     DataConvErrStr := '';
     R := 0;
-//    isOFX := false;
+    isOFX := false;
     ImpTrades := nil;
     setLength(ImpTrades, R + 1);
     GetImpDateLast;
@@ -14315,17 +15018,17 @@ begin
     Commis := 0;
     Amt := 0;
     // check if OFX or QFX
-//    if (pos('<?OFX', s) > 0) or (pos('</DTTRADE', s) > 0) then begin
-//      isOFX := true;
-//    end;
+    if (pos('<?OFX', s) > 0) or (pos('</DTTRADE', s) > 0) then begin
+      isOFX := true;
+    end;
     // ----------------------
     // format lines
     s := AdjustLineBreaks(s);
     if (pos('<OFX>', s) > 0) then begin
       delete(s, 1, pos('<OFX>', s) - 1); // sm(s);
-//      if isOFX then
-//        R := e_ParseOFXreply(s)
-//      else
+      if isOFX then
+        R := e_ParseOFXreply(s)
+      else
         R := parseQFX(s);
     end
     else
@@ -14999,7 +15702,7 @@ begin // ReadRobinhoodCSV
           contracts := false;
       end;
       // -- type/mult ---
-      if (iTyp = -1) then begin // legacy format has no type field
+      if (iTyp = -1) then begin // old format has no type field
         if contracts then begin
           typeStr := 'OPT-100';
           mult := 100;
@@ -15140,6 +15843,7 @@ begin // ReadRobinhoodCSV
           dec(R);
           Continue;
         end;
+        Shares := rndTo5(Shares); // 2025-10-30 MB - see "Robin Hood 6 Decimal CSV's"
         if Shares < 0 then
           Shares := -Shares;
         // ----------------------------
@@ -15258,7 +15962,7 @@ end;
 function ReadSchwabCSV(ImpStrList : TStringList): integer;
 var
   i, j, k, start, eend, R : integer;
-  iDt, iOC, iTk, iDes, iPr, iShr, iCm, iAmt : integer; // import fields
+  iDt, iOC, iTk, iDes, iPr, iShr, iCm, iAmt, N1 : integer; // import fields
   ImpDate, oc, ls, PrStr, ShStr, AmtStr, CmStr,
    junk, sep, line, AdjEntryStr : string;
   // note: for some reason, tick is a unit-level string var.
@@ -15278,6 +15982,7 @@ var
     iShr := 0;
     iCm := 0;
     iAmt := 0;
+    N1 := 0;
   end;
   // ----------------------------------
   procedure SetFieldNumbers();
@@ -15300,7 +16005,7 @@ var
     // iCm  Fees & Comm	$0.66
     // iAmt Amount	($33.66)
     // --------------------------------
-    // here are the TDA CSV fields (for legacy files):
+    // here are the TDA CSV fields (for older files):
     // iDt  DATE (m/d/yy) e.g. 1/5/17
     //      TRANSACTION ID,
     // iDes DESCRIPTION, Bought 1 JNJ   170421C00125000 Apr 21 2017 125.0 Call @ 0.75
@@ -15310,7 +16015,8 @@ var
     // iCm  COMMISSION,  <not used; must recalc>
     // iAmt AMOUNT       -82
     // --------------------------------
-    for j := 0 to (lineLst.Count - 1) do begin
+    N1 := lineLst.Count - 1;
+    for j := 0 to N1 do begin
       s := trim(lineLst[j]);
       if s = 'DATE' then begin //
         iDt := j;
@@ -15369,8 +16075,6 @@ begin // ReadSchwabCSV
       miniOptions := false;
       optExpEx := false;
       bonds := false;
-      inc(R);
-      if R < 1 then R := 1;
       // --------------------
       line := ImpStrList[i];
       line := uppercase(line); // search line for UPPERCASE tokens...
@@ -15394,6 +16098,10 @@ begin // ReadSchwabCSV
         Continue; // don't process anything until we find the header!
       end; // header not found yet
       // --- date -----------
+      if lineLst.Count <= iDt then begin
+        sm('ERR: ' + line);
+        continue;
+      end;
       ImpDate := lineLst[iDt];
       if length(ImpDate) > 10 then begin
         junk := ImpDate;
@@ -15412,13 +16120,11 @@ begin // ReadSchwabCSV
           result := 0;
           exit;
         end;
-        dec(R);
         Continue;
       end;
       ImpDate := LongDateStr(ImpDate);
       if not ValidTradeDate(ImpDate, ImpDateLast, ImpNextDateOn) //
       then begin
-        dec(R);
         Continue;
       end;
       // --- buy/sell -------
@@ -15471,13 +16177,25 @@ begin // ReadSchwabCSV
       end
       else begin
         oc := '';
-        dec(R);
         Continue;
       end;
       if (pos('ADJUSTING ENTRY', line) > 0) then begin
         Adj := true;
         oc := 'X';
       end;
+      // --------------------
+      if lineLst.Count <= N1 then begin
+        sm('bad record detected:' + CRLF //
+        + CRLF //
+        + line //
+        + CRLF //
+        + CRLF //
+        + 'click OK to skip it');
+        continue;
+      end;
+      // --- if it gets this far,
+      inc(R);
+      if R < 1 then R := 1;
       // --- shares ---------
       if not newColFormat then begin
         ShStr := lineLst[iShr];
@@ -15730,7 +16448,7 @@ begin // ReadSchwabCSV
     if R > 1 then
       if xStrToDate(ImpTrades[1].DT) > xStrToDate(ImpTrades[R].DT) then
         ReverseImpTradesDate(R);
-    fixImpTradesOutOfOrder(R);
+//    fixImpTradesOutOfOrder(R);
     if Adj then begin
       for i := 1 to R do begin
         StatBar('Matching Adjusting Entries: ' + IntToStr(i));
@@ -15958,10 +16676,12 @@ begin
       // ------------------------------
       // --- Date ---------------------
       ImpDate := fieldLst[iDt]; // format already MM/DD/YYYY
-      if pos('/', ImpDate) < 2 then
+      if (pos('/', ImpDate) < 2) then begin
         Continue; // not a valid date
-      if not isdate(ImpDate) then
+      end;
+      if not isdate(ImpDate) then begin
         sm('Cannot determine the transaction date of this trade:' + cr + line);
+      end;
       if not ValidTradeDate(ImpDate, ImpDateLast, ImpNextDateOn) then begin
         // DataConvErrRec := DataConvErrRec + 'invalid date: ' + ImpStrList[i] + cr;
         Continue;
@@ -17936,7 +18656,6 @@ begin // ReadtastyworksCSV
       // NDXP  20210825P14550.000 <- no spaces
       // 123456789012345678901234 <-- 24 chars
       if (copy(tick, 7, 2)= '20') and (length(tick)> 10) then
-// if ((pos(' ',tick) > 0) and (length(tick) > 6) then
         contracts := true
       else
         contracts := false;
@@ -17974,21 +18693,12 @@ begin // ReadtastyworksCSV
         opStrike := trim(copy(junk, 16, 9));
         opStrike := delTrailingZeros(opStrike);
         // ------------------
-// junk := trim(junk);
-// if length(junk) < 9 then
-// contracts := false
-// else begin
-// opYr := copy(junk, 3, 2);
-// opMon := copy(junk, 5, 2);
-// opDay := copy(junk, 7, 2);
-// opCP := copy(junk, 9, 1);
         if opCP = 'C' then
           opCP := 'CALL'
         else if opCP = 'P' then
           opCP := 'PUT'
         else
           contracts := false;
-// end;
       end;
       // --------------------
       if contracts then begin
@@ -19518,28 +20228,28 @@ var
   dtExec : TDateTime;
   // ----------------------------------------------------------------
   // ## FIELD (OLD)    EXAMPLE       FIELD (NEW)     EXAMPLE
-  // 0. Account                      Tr No           227517587
-  // DT  1. T/D            11/1/2016  DT Trade Date      6/13/2019
-  // 2. S/D            11/4/2016     Settle Date     6/17/2019
-  // 3. Currency       USD           Account         <sometext>
-  // 4. Type           3             Company Name    <customer>
-  // LS  5. Side           SS            Account Type    M
-  // TK  6. Symbol         NUGT       TK Symbol          CODA
-  // SH  7. Qty            500        LS Side            SS
-  // PR  8. Price          14.88      SH QTY             -200
-  // 9. Exec Time      8:39:07    PR Price           12.9
-  // 10. Comm           2.5           Gross Amount    2580
-  // 11. SEC            0.17       AM Net Amount      2579.91
-  // 12. TAF            0.06          Commission      0
-  // 13. NSCC           0.033         Reg Fee         -0.06
-  // 14. Nasdaq         0.00785       PTFPF           0
-  // 15. ECN Remove     0             ECN Fee         0
-  // 16. ECN Add        0             TAF Fee         -0.03
-  // 17. Gross Proceeds 7440          ORF Fee
+  //    0. Account                      Tr No           227517587
+  // DT 1. T/D            11/1/2016  DT Trade Date      6/13/2019
+  //    2. S/D            11/4/2016     Settle Date     6/17/2019
+  //    3. Currency       USD           Account         <sometext>
+  //    4. Type           3             Company Name    <customer>
+  // LS 5. Side           SS            Account Type    M
+  // TK 6. Symbol         NUGT       TK Symbol          CODA
+  // SH 7. Qty            500        LS Side            SS
+  // PR 8. Price          14.88      SH QTY             -200
+  //    9. Exec Time      8:39:07    PR Price           12.9
+  //   10. Comm           2.5           Gross Amount    2580
+  //   11. SEC            0.17       AM Net Amount      2579.91
+  //   12. TAF            0.06          Commission      0
+  //   13. NSCC           0.033         Reg Fee         -0.06
+  //   14. Nasdaq         0.00785       PTFPF           0
+  //   15. ECN Remove     0             ECN Fee         0
+  //   16. ECN Add        0             TAF Fee         -0.03
+  //   17. Gross Proceeds 7440          ORF Fee
   // AM 18. Net Proceeds   7437.22915    Broker Fee
-  // 19. Clr Broker     NSDQ          Fees            0.09
-  // 20. Liq            7
-  // 21. Note
+  //   19. Clr Broker     NSDQ          Fees            0.09
+  //   20. Liq            7
+  //   21. Note
   // ----------------------------------------------------------------
   procedure SetFieldNumbers;
   var
@@ -21180,7 +21890,6 @@ var
       delete(s, pos('.', s), 1);
     result := IsNumber(s);
   end;
-
 // ----------------------------------
 begin // ReadVisionCSV
   bFoundHeader := false; // let's us know we haven't found the header yet
@@ -21639,6 +22348,404 @@ begin
 end; // ReadVision
 
 
+          // ----------------
+          // Webull-Omnibus
+          // ----------------
+
+function ReadWebullOmniCSV(ImpStrList : TStringList): integer;
+var
+  i, j, k, start, eend, R, Q : integer;
+  iDt, iTm, iTyp, iOC, iLS, iTk, iDesc, iShr, iPr, iAmt, iCm : integer; // import field numbers
+  junk, sep, ImpDate, ImpTime, CmStr, feeStr, PrStr, AmtStr, ShStr, line, AdjEntryStr, //
+    opStk, opYr, opMon, opDay, opStrike, opCP, opTk, //
+    oc, ls, dd, mm, yyyy, errLogTxt : string;
+  Amount, Commis, Fees, Shares, mult : double;
+  contracts, Adj, optExpEx, ImpNextDateOn, bonds, newColFormat, miniOptions, futures, bFoundHeader,
+    cancels : boolean;
+  fieldLst : TStrings;
+  // --------------------------------------------
+  // # FldName  Examples
+  // 1 Symbol   FIGR	SCHW251003C00100000
+  // CUSIP    349381103	SCHW251003C00100000
+  // SecCurrency	USD	USD
+  // 2 TranType Buy	Sell
+  // 4 OpenCloseInd	ToOpen	ToClose
+  // ISEType  Buy	Sell
+  // 8 Qty      16.0	10.0
+  // 16 Price    25.0	1.41
+  // Comm     0.0	0.0
+  // Fees     0.0	0.54
+  // Interest 0.0	0.0
+  // 32 Net      400.00	1,409.46
+  // Currency USD	USD
+  // USDNet   400.00	1,409.46
+  // Description
+  // 64 TradeDate	2025-09-11	2025-09-04
+  // 128 TradeTime	09:17:23.800	10:04:11.008
+  // --------------------------------------------
+  procedure SetFieldNumbers();
+  var
+    j : integer;
+  begin
+    // find/map tastyworks CSV fields
+    k := 0;
+    for j := 0 to (fieldLst.Count - 1) do begin
+      if fieldLst[j] = 'SYMBOL' then begin
+        iTk := j;
+        k := k or 1;
+      end
+      else if fieldLst[j] = 'TRANTYPE' then begin
+        iOC := j; // BUY or SELL
+        k := k or 2;
+      end
+      else if fieldLst[j] = 'OPENCLOSEIND' then begin
+        iLS := j; // ToOpen or ToClose
+        k := k or 4;
+      end
+      else if fieldLst[j] = 'QTY' then begin
+        iShr := j;
+        k := k or 8;
+      end
+      else if fieldLst[j] = 'PRICE' then begin
+        iPr := j;
+        k := k or 16;
+      end
+      else if fieldLst[j] = 'NET' then begin
+        iAmt := j;
+        k := k or 32;
+      end
+      else if fieldLst[j] = 'TRADEDATE' then begin
+        iDt := j;
+        k := k or 64;
+      end
+      else if fieldLst[j] = 'TRADETIME' then begin
+        iTm := j;
+        k := k or 128;
+      end;
+    end;
+  end;
+  // ------------------------
+  function DecodeOptTk(var sTk : string) : string;
+  var
+    n : integer;
+    opStk, opYr, opMon, opDay, opStrike, opCP, opStrik2 : string;
+  begin
+    // Reset all local vars
+    result := '';
+    opStk := '';
+    opStrike := '';
+    opStrik2 := '';
+    opYr := '';
+    opMon := '';
+    opDay := '';
+    opCP := '';
+    // --------------------
+    // SCHW251003C00100000
+    // TickYYMMDDX$$$$$ccc
+    // ---------------------
+    junk := rightStr(sTk, 15); // all but underlying
+    opStk := leftStr(sTk, length(sTk)- 15);
+    opStk := trim(opStk); // in case of trailing spaces
+    // expiration date
+    opYr := copy(junk, 1, 2);
+    opMon := copy(junk, 3, 2);
+    opMon := getExpMo(opMon);
+    opDay := copy(junk, 5, 2);
+    delete(junk, 1, 6);
+    // call or put
+    opCP := leftStr(junk, 1);
+    if opCP = 'C' then
+      opCP := 'CALL'
+    else
+      opCP := 'PUT';
+    // strike price
+    opStrike := copy(junk, 2, 5) + '.' + rightStr(junk, 3);
+    opStrike := delTrailingZeros(opStrike); // for matching
+    opStrike := delLeadingZeros(opStrike); // also leading 0's
+    result := opStk + ' ' + opDay + opMon + opYr + ' ' + opStrike + ' ' + opCP;
+  end;
+// --------------------------------------------
+begin // ReadWebullOmniCSV
+  bFoundHeader := false; // let's us know we haven't found the header yet
+  iDt := 0;
+  iTyp := 0;
+  iOC := 0;
+  iLS := -1; // to let us know there IS no field for this
+  iTk := 0;
+  iDesc := 0;
+  iShr := 0;
+  iPr := 0;
+  iAmt := 0;
+  iTm := -1; // in case there IS no timestamp field
+  DataConvErrRec := '';
+  cancels := false;
+  R := 0;
+  try
+    // created 2017-12-14
+    AdjEntryStr := '';
+    DataConvErrRec := '';
+    DataConvErrStr := '';
+    Adj := false;
+    ImpNextDateOn := false;
+    newColFormat := false;
+    if ImpStrList.Count < 1 then begin
+      ImpStrList.Destroy;
+      result := 0;
+      exit;
+    end;
+    fieldLst := TStrings.Create;
+    // --------------------------------
+    i := -1;
+    while i < (ImpStrList.Count - 1) do begin
+      inc(i); // make it work like a for/next
+      contracts := false;
+      futures := false;
+      miniOptions := false;
+      optExpEx := false;
+      bonds := false;
+      // ------------------------------
+      line := ImpStrList[i];
+      line := uppercase(line); // from here on, search line for UPPERCASE string tokens...
+      junk := replacestr(line, ',', '');
+      if junk = '' then begin
+        continue;
+      end;
+      // parse all columns into string list
+      fieldLst := ParseCSV(line); // still going to be uppercase since not before uppercase()
+      // ------------------------------
+      if not bFoundHeader then begin
+        if (pos('TRANTYPE', line) > 0) //
+          and (pos('TRADEDATE', line) > 0) //
+          and (pos('SYMBOL', line) > 0) then begin
+          SetFieldNumbers;
+          if SuperUser and (k <> 255) then
+            sm('there appear to be fields missing.');
+          // could check for negative values here.
+          bFoundHeader := true; // don't do this anymore
+          R := 0; // start now
+        end;
+        Continue; // don't process anything until we recognize the header
+      end; // if not bFoundHeader
+      // ------------------------------
+      if pos('ERROR', line) > 0 then begin
+        DataConvErrRec := DataConvErrRec + ImpStrList[i] + cr;
+        sm('Webull reported an error.' + cr //
+            + 'Please reduce the date range and try again.');
+        result := 0;
+        exit;
+      end;
+      // --- Date ---------------------
+      ImpDate := fieldLst[iDt]; // format: MM/DD/YY
+      if pos('-', ImpDate) = 5 then begin
+        ImpDate := StringReplace(ImpDate, '-', '', [rfReplaceAll]);
+        ImpDate := MMDDYYYY(ImpDate); // it comes in yyyy-mm-dd
+      end;
+      if not isdate(ImpDate) then
+        sm('Cannot determine the transaction date of this trade:' + cr + line);
+      if not ValidTradeDate(ImpDate, ImpDateLast, ImpNextDateOn) then begin
+        // DataConvErrRec := DataConvErrRec + 'invalid date: ' + ImpStrList[i] + cr;
+        Continue;
+      end;
+      inc(R); // if it gets this far, count it
+      // --- Time of day -
+      if iTm < 0 then
+        ImpTime := ''
+      else begin
+        junk := fieldLst[iTm]; // format: yyyy-mm-ddThh:mm:ss.nnn
+        ImpTime := parseLast(junk, 'T'); // time follows letter "T"
+      end;
+      // --- OC and LS ---
+      if fieldLst[iOC] = 'BUY' then begin
+        if (iLS >= 0) and (iLS < fieldLst.Count) then begin
+          if fieldLst[iLS] = 'TOCLOSE' then begin
+            oc := 'C';
+            ls := 'S';
+          end
+          else begin
+            oc := 'O';
+            ls := 'L';
+          end;
+        end;
+      end
+      else if fieldLst[iOC] = 'SELL' then begin
+        if (iLS >= 0) and (iLS < fieldLst.Count) then begin
+          if fieldLst[iLS] = 'TOOPEN' then begin
+            oc := 'O';
+            ls := 'S';
+          end
+          else begin
+            oc := 'C';
+            ls := 'L';
+          end;
+        end;
+      end
+      else if pos('CANCEL', fieldLst[iOC]) = 1 then begin
+        oc := 'X';
+        cancels := true;
+      end
+      else begin // error
+        DataConvErrRec := DataConvErrRec + 'unknown OC/LS: ' + ImpStrList[i] + cr;
+        oc := 'E';
+        ls := 'E';
+      end;
+      // --- # shares ---
+      ShStr := fieldLst[iShr];
+      ShStr := delCommas(ShStr);
+      // --- ticker ---
+      tick := trim(fieldLst[iTk]);
+      // --- options --------
+      contracts := false;
+      if length(tick)> 15 then begin
+        contracts := true;
+        tick := DecodeOptTk(tick);
+      end;
+      // --- price ---
+      PrStr := fieldLst[iPr];
+      delete(PrStr, pos('$', PrStr), 1);
+      PrStr := delCommas(PrStr);
+      if optExpEx then
+        PrStr := '0.00';
+      // --- amount ---
+      AmtStr := fieldLst[iAmt];
+      if (pos('$', AmtStr) > 0) then
+        delete(AmtStr, pos('$', AmtStr), 1);
+      AmtStr := delCommas(AmtStr);
+      if (AmtStr = '') or (pos('*', AmtStr) > 0) then
+        AmtStr := '0.00';
+      // --------------------
+      try
+        Shares := StrToFloat(ShStr, Settings.InternalFmt);
+        if Shares = 0 then begin
+          dec(R);
+          Continue;
+        end;
+        if Shares < 0 then
+          Shares := -Shares;
+        // ----------------------------
+        Price := StrToFloat(PrStr, Settings.InternalFmt);
+        if (leftStr(AmtStr, 1)= '(') and (rightStr(AmtStr, 1)= ')') then
+          AmtStr := '-' + copy(AmtStr, 2, length(AmtStr)- 2);
+        Amount := CurrToFloat(AmtStr);
+        if Amount < 0 then
+          Amount := -Amount;
+        // ----------------------------
+        if contracts then begin
+          mult := 100;
+          ImpTrades[R].prf := 'OPT-100';
+        end
+        else if futures then begin
+          mult := 100;
+          ImpTrades[R].prf := 'FUT-0';
+        end
+        else begin
+          mult := 1;
+          ImpTrades[R].prf := 'STK-1';
+        end;
+        // ----------------------------
+        // ignore the comm and fees fields and just calculate commission
+        if ((oc = 'C') and (ls = 'L')) or ((oc = 'O') and (ls = 'S')) then
+          Commis := Amount - (Shares * mult * Price)
+        else
+          Commis := (Shares * mult * Price) - Amount;
+        if Commis < 0 then
+          Commis := -Commis;
+        // ----------------------------
+        ImpTrades[R].DT := ImpDate;
+        ImpTrades[R].tm := ImpTime;
+        ImpTrades[R].oc := oc;
+        ImpTrades[R].ls := ls;
+        ImpTrades[R].tk := trim(tick);
+        ImpTrades[R].opTk := ''; // trim(optDesc);
+        ImpTrades[R].sh := Shares;
+        ImpTrades[R].pr := Price;
+        ImpTrades[R].am := Amount;
+        ImpTrades[R].cm := rndto2(Commis) + rndto2(Fees);
+      except
+        DataConvErrRec := DataConvErrRec + ImpStrList[i] + cr;
+        dec(R);
+        Continue;
+      end;
+      ImpTrades[R].it := TradeLogFile.Count + R;
+    end;
+    // --------------------------------
+    if cancels then begin
+      for i := 1 to R do begin
+        if (ImpTrades[i].oc <> 'X') then
+          Continue; // not a cancel
+        StatBar('Matching Cancelled Trades: ' + IntToStr(i));
+        for j := (i + 1) downto 1 do begin // NOTE: CANCEL can come before OR after trade to cancel
+          if j > R then
+            Continue; // don't go out of bounds
+          if (ImpTrades[i].tk <> ImpTrades[j].tk) then
+            Continue; // not same ticker
+          // could be a match, let's check the rest...
+          if (format('%1.5f', [ImpTrades[i].sh], Settings.UserFmt) = format('%1.5f', [ImpTrades[j].sh], Settings.UserFmt)) //
+          and (format('%1.5f', [ImpTrades[i].pr], Settings.UserFmt) = format('%1.5f', [ImpTrades[j].pr], Settings.UserFmt)) //
+          and (format('%1.2f', [ImpTrades[i].cm], Settings.UserFmt) = format('%1.2f', [ImpTrades[j].cm], Settings.UserFmt)) //
+          and (ImpTrades[i].prf = ImpTrades[j].prf) //
+          and (ImpTrades[j].oc <> '') and (i <> j) //
+          then begin
+            // with ImpTrades[i] do
+            // msgTxt:= msgTxt+dt+tab+tk+tab+oc+ls+tab+floatToStr(sh)
+            // +tab+floatToStr(pr)+tab+floatToStr(am)+cr;
+            glNumCancelledTrades := glNumCancelledTrades + 2;
+            // --- I ---
+            ImpTrades[i].oc := '';
+            ImpTrades[i].ls := '';
+            ImpTrades[i].tm := '';
+            // --- J ---
+            ImpTrades[j].oc := '';
+            ImpTrades[j].ls := '';
+            ImpTrades[j].tm := '';
+            break;
+          end; // if everything else matches
+        end; // for j = 1 downto
+      end; // for i = 1 to R
+    end; // if cancels
+    // --------------------------------
+    ImpStrList.Destroy;
+    result := R;
+  finally
+    fieldLst.Free;
+    if length(DataConvErrRec) > 1 then begin
+      AssignFile(ErrLog, Settings.DataDir + '\error.log');
+      rewrite(ErrLog);
+      errLogTxt := 'ERROR :' + msgTxt + '; Detailed Message: ' + '"' + DataConvErrRec + '"';
+      try
+        write(ErrLog, errLogTxt);
+        errLogTxt := '';
+      finally
+        CloseFile(ErrLog);
+      end;
+    end; // end if DataConvErrRec
+  end;
+end; // ReadWebullOmniCSV
+
+
+function ReadWebullOmni(): integer;
+var
+  R : integer;
+  t : string;
+begin
+  try
+    R := 0;
+    ImpStrList := TStringList.Create;
+    ImpTrades := nil;
+    setLength(ImpTrades, R + 1);
+    GetImpDateLast;
+    if FileExists(Settings.ImportDir + '\download.csv') then
+      deleteFile(Settings.ImportDir + '\download.csv');
+    t := TradeLogFile.CurrentAccount.FileImportFormat;
+    // tastyworks, or another which uses the same format
+    GetImpStrListFromFile(t, 'csv', '');
+    result := ReadWebullOmniCSV(ImpStrList);
+    exit;
+  finally
+    // ReadWebullOmni
+  end;
+end;
+
+
          // -----------------
          // Paste
          // -----------------
@@ -21935,15 +23042,15 @@ begin
 end;
 
 
-//procedure SaveStrToFile(const FileName : TFileName; const content : string);
-//begin
-//  with TFileStream.Create(FileName, fmCreate) do
-//    try
-//      write(Pointer(content)^, length(content));
-//    finally
-//      Free;
-//    end;
-//end;
+procedure SaveStrToFile(const FileName : TFileName; const content : string);
+begin
+  with TFileStream.Create(FileName, fmCreate) do
+    try
+      write(Pointer(content)^, length(content));
+    finally
+      Free;
+    end;
+end;
 
 
 // --------------------------
@@ -22114,138 +23221,138 @@ begin
 end; // SortImpByDteOC
 
 
-//procedure SortImpByDateOCNEW(b, e : integer);
-//var
-//  h, i, j, X : integer;
-//  closedSh, openSh : double;
-//  DateList, itemList, tickList : TStringList;
-//  Sort : TTradeArray;
-//begin
-//  try
-//    DateList := TStringList.Create;
-//    DateList.clear;
-//    itemList := TStringList.Create;
-//    itemList.clear;
-//    tickList := TStringList.Create;
-//    tickList.clear;
-//    // put all ticks into tickList - added 3-1-02
-//    for i := b to e do begin
-//      if tickList.IndexOf(ImpTrades[i].tk) = -1 then
-//        tickList.Add(ImpTrades[i].tk);
-//    end;
-//    tickList.Sort;
-//    // for i:= 0 to dateList.count-1 do MsgTxt:= MsgTxt +dateList[i] +tab;
-//    // sm(MsgTxt);
-//    X := 0;
-//    closedSh := 0;
-//    Sort := nil;
-//    setLength(Sort, e - b + 10);
-//    for h := 0 to tickList.Count - 1 do begin
-//      openSh := 0;
-//      StatBar('Sorting - ' + copy(tickList[h], 1, 1));
-//      // put all dates into DateList - changed 3-1-02
-//      DateList.clear;
-//      for i := b to e do begin
-//        if (DateList.IndexOf(YYYYMMDD_Ex(ImpTrades[i].DT, Settings.InternalFmt)) = -1) and
-//          (tickList[h] = ImpTrades[i].tk) then
-//          DateList.Add(YYYYMMDD_Ex(ImpTrades[i].DT, Settings.InternalFmt));
-//      end;
-//      DateList.Sort;
-//      for i := 0 to DateList.Count - 1 do begin
-//        // get close trades total shares
-//        closedSh := 0;
-//        for j := b to e do begin
-//          with ImpTrades[j] do begin
-//            if (oc = 'C') and (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and
-//              (tickList[h] = tk) then begin
-//              closedSh := closedSh + sh;
-//            end;
-//          end;
-//        end;
-//        // get open trades first
-//        for j := b to e do begin
-//          with ImpTrades[j] do begin
-//            if (((oc = 'O') and (ls = 'L')) or ((oc = 'O') and (ls = 'S'))) and
-//              (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and (tickList[h] = tk) and
-//              (((i = DateList.Count - 1) and (sh <= closedSh)) or (sh <= closedSh - openSh)) then
-//            begin
-//              inc(X);
-//              Sort[X] := ImpTrades[j];
-//              openSh := openSh + sh;
-//              itemList.Add(IntToStr(it));
-//            end;
-//          end;
-//        end;
-//        // get close trades
-//        for j := b to e do begin
-//          with ImpTrades[j] do begin
-//            if (((oc = 'C') and (ls = 'L')) or ((oc = 'C') and (ls = 'S'))) and
-//              (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and (tickList[h] = tk) and
-//              (sh <= openSh) then begin
-//              inc(X);
-//              Sort[X] := ImpTrades[j];
-//              openSh := openSh - sh;
-//              itemList.Add(IntToStr(it));
-//            end;
-//          end;
-//        end;
-//        itemList.Sort;
-//      end;
-//      for i := 0 to DateList.Count - 1 do begin
-//        // get balance of open trades
-//        for j := b to e do begin
-//          with ImpTrades[j] do begin
-//            if (((oc = 'O') and (ls = 'L')) or ((oc = 'O') and (ls = 'S'))) and
-//              (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and (tickList[h] = tk) and
-//              (itemList.IndexOf(IntToStr(it)) = -1) then begin
-//              inc(X);
-//              Sort[X] := ImpTrades[j];
-//              openSh := openSh + sh;
-//              itemList.Add(IntToStr(it));
-//            end;
-//          end;
-//        end;
-//        // get balance of close trades
-//        for j := b to e do begin
-//          with ImpTrades[j] do begin
-//            if (((oc = 'C') and (ls = 'L')) or ((oc = 'C') and (ls = 'S'))) and
-//              (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and (tickList[h] = tk) and
-//              (itemList.IndexOf(IntToStr(it)) = -1) then begin
-//              inc(X);
-//              Sort[X] := ImpTrades[j];
-//              openSh := openSh - sh;
-//              itemList.Add(IntToStr(it));
-//            end;
-//          end;
-//        end;
-//        // get cancel trades
-//        for j := b to e do begin
-//          with ImpTrades[j] do begin
-//            if (oc = 'X') and (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and
-//              (tickList[h] = tk) and (itemList.IndexOf(IntToStr(it)) = -1) then begin
-//              inc(X);
-//              Sort[X] := ImpTrades[j];
-//              openSh := openSh - sh;
-//              itemList.Add(IntToStr(it));
-//            end;
-//          end;
-//        end;
-//      end;
-//    end;
-//    // copy sorted trades back to Trades array
-//    setLength(Sort, X + 1);
-//    for i := 1 to X do begin
-//      ImpTrades[b + i - 1] := Sort[i];
-//    end;
-//    Sort := nil;
-//    DateList.Destroy;
-//    itemList.Destroy;
-//    tickList.Destroy;
-//    StatBar('off');
-//  finally
-//    //
-//  end;
-//end; // SortImpByDateOCNew
+procedure SortImpByDateOCNEW(b, e : integer);
+var
+  h, i, j, X : integer;
+  closedSh, openSh : double;
+  DateList, itemList, tickList : TStringList;
+  Sort : TTradeArray;
+begin
+  try
+    DateList := TStringList.Create;
+    DateList.clear;
+    itemList := TStringList.Create;
+    itemList.clear;
+    tickList := TStringList.Create;
+    tickList.clear;
+    // put all ticks into tickList - added 3-1-02
+    for i := b to e do begin
+      if tickList.IndexOf(ImpTrades[i].tk) = -1 then
+        tickList.Add(ImpTrades[i].tk);
+    end;
+    tickList.Sort;
+    // for i:= 0 to dateList.count-1 do MsgTxt:= MsgTxt +dateList[i] +tab;
+    // sm(MsgTxt);
+    X := 0;
+    closedSh := 0;
+    Sort := nil;
+    setLength(Sort, e - b + 10);
+    for h := 0 to tickList.Count - 1 do begin
+      openSh := 0;
+      StatBar('Sorting - ' + copy(tickList[h], 1, 1));
+      // put all dates into DateList - changed 3-1-02
+      DateList.clear;
+      for i := b to e do begin
+        if (DateList.IndexOf(YYYYMMDD_Ex(ImpTrades[i].DT, Settings.InternalFmt)) = -1) and
+          (tickList[h] = ImpTrades[i].tk) then
+          DateList.Add(YYYYMMDD_Ex(ImpTrades[i].DT, Settings.InternalFmt));
+      end;
+      DateList.Sort;
+      for i := 0 to DateList.Count - 1 do begin
+        // get close trades total shares
+        closedSh := 0;
+        for j := b to e do begin
+          with ImpTrades[j] do begin
+            if (oc = 'C') and (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and
+              (tickList[h] = tk) then begin
+              closedSh := closedSh + sh;
+            end;
+          end;
+        end;
+        // get open trades first
+        for j := b to e do begin
+          with ImpTrades[j] do begin
+            if (((oc = 'O') and (ls = 'L')) or ((oc = 'O') and (ls = 'S'))) and
+              (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and (tickList[h] = tk) and
+              (((i = DateList.Count - 1) and (sh <= closedSh)) or (sh <= closedSh - openSh)) then
+            begin
+              inc(X);
+              Sort[X] := ImpTrades[j];
+              openSh := openSh + sh;
+              itemList.Add(IntToStr(it));
+            end;
+          end;
+        end;
+        // get close trades
+        for j := b to e do begin
+          with ImpTrades[j] do begin
+            if (((oc = 'C') and (ls = 'L')) or ((oc = 'C') and (ls = 'S'))) and
+              (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and (tickList[h] = tk) and
+              (sh <= openSh) then begin
+              inc(X);
+              Sort[X] := ImpTrades[j];
+              openSh := openSh - sh;
+              itemList.Add(IntToStr(it));
+            end;
+          end;
+        end;
+        itemList.Sort;
+      end;
+      for i := 0 to DateList.Count - 1 do begin
+        // get balance of open trades
+        for j := b to e do begin
+          with ImpTrades[j] do begin
+            if (((oc = 'O') and (ls = 'L')) or ((oc = 'O') and (ls = 'S'))) and
+              (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and (tickList[h] = tk) and
+              (itemList.IndexOf(IntToStr(it)) = -1) then begin
+              inc(X);
+              Sort[X] := ImpTrades[j];
+              openSh := openSh + sh;
+              itemList.Add(IntToStr(it));
+            end;
+          end;
+        end;
+        // get balance of close trades
+        for j := b to e do begin
+          with ImpTrades[j] do begin
+            if (((oc = 'C') and (ls = 'L')) or ((oc = 'C') and (ls = 'S'))) and
+              (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and (tickList[h] = tk) and
+              (itemList.IndexOf(IntToStr(it)) = -1) then begin
+              inc(X);
+              Sort[X] := ImpTrades[j];
+              openSh := openSh - sh;
+              itemList.Add(IntToStr(it));
+            end;
+          end;
+        end;
+        // get cancel trades
+        for j := b to e do begin
+          with ImpTrades[j] do begin
+            if (oc = 'X') and (YYYYMMDD_Ex(DT, Settings.InternalFmt) = DateList[i]) and
+              (tickList[h] = tk) and (itemList.IndexOf(IntToStr(it)) = -1) then begin
+              inc(X);
+              Sort[X] := ImpTrades[j];
+              openSh := openSh - sh;
+              itemList.Add(IntToStr(it));
+            end;
+          end;
+        end;
+      end;
+    end;
+    // copy sorted trades back to Trades array
+    setLength(Sort, X + 1);
+    for i := 1 to X do begin
+      ImpTrades[b + i - 1] := Sort[i];
+    end;
+    Sort := nil;
+    DateList.Destroy;
+    itemList.Destroy;
+    tickList.Destroy;
+    StatBar('off');
+  finally
+    //
+  end;
+end; // SortImpByDateOCNew
 
 
                     // --------------------------
@@ -22989,127 +24096,8 @@ begin
   end;
 end;
 
-//// ----------------------------------
+
 //function ImportOFXData : integer;
-//var
-//  TradeList : TTradeList;
-//  Trade : TTLTrade;
-//  errMsg, errLogTxt, errAdvice : string;
-//  RecCnt : integer;
-//begin
-//  // ----------------------------------
-//  // Check for OFX errors
-//  if OFXImport.ErrorOccurred then begin
-//    if (DEBUG_MODE > 1) and SuperUser then begin
-//      TMessageDialog.Execute(msgImp, TradeLogFile.CurrentAccount.FileImportFormat //
-//          + ' OFX Error Message: ' + cr + cr + OFXImport.ErrorMessage, '',
-//        'OFX Login Error', mtError);
-//    end;
-//    // --------------------------------
-//    if (TradeLogFile.CurrentAccount.FileImportFormat = 'Charles Schwab') // 2019-12-05 MB
-//      and (pos('User needs to review security settings', OFXImport.ErrorMessage) = 1) then begin
-//      msgImp := 'It appears you have not enabled 3rd party access.';
-//      errAdvice := 'Please enable through Schwab and try again.';
-//    end
-//    else if (pos('password', lowercase(OFXImport.ErrorMessage))> 0) //
-//      or (pos('username', lowercase(OFXImport.ErrorMessage))> 0) //
-//      or (pos('user name', lowercase(OFXImport.ErrorMessage))> 0) then begin
-//      msgImp := 'INVALID USERNAME OR PASSWORD';
-//      errAdvice := 'Please correct the problem and try again';
-//    end
-//    else if pos('account', lowercase(OFXImport.ErrorMessage))> 0 then begin
-//      msgImp := 'INVALID ACCOUNT NUMBER';
-//      errAdvice := 'Please correct the problem and try again';
-//    end
-//    else begin
-//      msgImp := 'GENERAL OFX LOGIN ERROR';
-//      errAdvice := 'Please contact your BROKER for assistance.';
-//    end;
-//    // --------------------------------
-//    // reformat ErrorMessage to 60 chars wide
-//    errMsg := wrapText(OFXImport.ErrorMessage, 60);
-//    AssignFile(ErrLog, Settings.DataDir + '\logs\error.log');
-//    rewrite(ErrLog);
-//    errLogTxt := uppercase(TradeLogFile.CurrentAccount.FileImportFormat) //
-//      + ' OFX ERROR ' + msgImp + '; Detailed Message: ' + '"' + errMsg + '"';
-//    try
-//      write(ErrLog, errLogTxt);
-//      errLogTxt := '';
-//    finally
-//      CloseFile(ErrLog);
-//    end;
-//    // --------------------------------
-//    msgImp := uppercase(TradeLogFile.CurrentAccount.FileImportFormat) + ' OFX ERROR ' + cr //
-//      + cr //
-//      + msgImp + cr + errAdvice + cr + cr + 'Detailed Message:' + cr + '"' + errMsg + '"';
-//    mDlg(msgImp, mtError,[mbOK], 0);
-//    exit(-1);
-//  end; // if ErrorOccurred
-//  // ----------------------------------
-//  // Save to disk file
-//  OFXImport.SaveToFile(Settings.ImportDir + '\' //
-//      + TradeLogFile.CurrentAccount.FileImportFormat + '_' //
-//      + FormatDateTime('yyyyMMdd', OFXDateStart) + '_' //
-//      + FormatDateTime('yyyyMMdd', OFXDateEnd) + '.ofx');
-//  // ----------------------------------
-//  result := 0;
-//  TradeList := OFXImport.GetTradeList;
-//  if TradeList.Count = 0 then
-//    exit(0);
-//  try
-//    RecCnt := TradeList.Count;
-//    // added 2014-07-11 to support OFX for baseline
-//    if ImpBaseline then
-//      setLength(ImpTrades, TradeList.Count + 1);
-//    for Trade in TradeList do begin
-//      // If a broker provides data just outside of what was requested, ignore it.
-//      // Also, if the user tries to get data beyond the extension deadline for a
-//      // given tax Year (eg. Past 10/16/NextTaxYear) - stop that as well
-//      if (Trade.Date < OFXDateStart) //
-//        or (Trade.Date > OFXDateEnd) //
-//        or TradeBeyondEndDate(Trade.Date) then begin
-//        Continue;
-//        Trade.Free;
-//      end;
-//      if (pos('FUT', Trade.TypeMult) = 1) //
-//        and (not Settings.MTMVersion or taxidVer) then
-//        FutureWarning := true;
-//      // do not import fidelity cash transactions
-//      if (Trade.Ticker = 'FCASH') then
-//        Continue;
-//      // fix for OPT-0
-//      if (Trade.TypeMult = 'OPT-0') then
-//        Trade.TypeMult := 'OPT-100';
-//      inc(result);
-//      // added to support OFX for baseline
-//      if ImpBaseline then begin
-//        Trade.calcAmount; // 2015-04-04 MB - needed so Schwab commission is correct
-//        ImpTrades[result].it := Trade.ID;
-//        ImpTrades[result].DT := DateToStr(Trade.Date, Settings.UserFmt);
-//        ImpTrades[result].tm := Trade.Time;
-//        ImpTrades[result].oc := Trade.oc;
-//        ImpTrades[result].ls := Trade.ls;
-//        ImpTrades[result].tk := Trade.Ticker;
-//        ImpTrades[result].sh := Trade.Shares;
-//        ImpTrades[result].pr := Trade.Price;
-//        ImpTrades[result].prf := Trade.TypeMult;
-//        ImpTrades[result].cm := Trade.Commission;
-//        ImpTrades[result].opTk := Trade.OptionTicker;
-//        ImpTrades[result].am := Trade.Amount;
-//        HandleMiniOptions(ImpTrades[result]);
-//      end
-//      else
-//        TradeLogFile.AddTrade(Trade);
-//      // get list of imported tickers
-//      if (impTicksList.IndexOf(Trade.Ticker) = -1) then
-//        impTicksList.Add(Trade.Ticker);
-//      if CheckRecordLimit then
-//        break;
-//    end;
-//  finally
-//    TradeList.Free;
-//  end;
-//end;
 
 
                     // --------------------------
@@ -24109,120 +25097,6 @@ var
       result := true;
     end;
   end;
-  // ----------------------------------
-//  function ImportOFXData : integer;
-//  var
-//    TradeList : TTradeList;
-//    Trade : TTLTrade;
-//    errMsg, errLogTxt, errAdvice : string;
-//  begin
-//    // ----------------------------------
-//    // Check for OFX errors
-//    // ----------------------------------
-//    if OFXImport.ErrorOccurred then begin
-//      if (DEBUG_MODE > 1) and SuperUser then begin
-//        TMessageDialog.Execute(msgTxt, TradeLogFile.CurrentAccount.FileImportFormat +
-//            ' OFX Error Message: ' + cr + cr + OFXImport.ErrorMessage, '',
-//          'OFX Login Error', mtError);
-//      end;
-//      // --------------------------------
-//      if (pos('password', lowercase(OFXImport.ErrorMessage))> 0) //
-//        or (pos('username', lowercase(OFXImport.ErrorMessage))> 0) //
-//        or (pos('user name', lowercase(OFXImport.ErrorMessage))> 0) then begin
-//        msgTxt := 'INVALID USERNAME OR PASSWORD';
-//        errAdvice := 'Please correct the problem and try again';
-//      end
-//      else if pos('account', lowercase(OFXImport.ErrorMessage))> 0 then begin
-//        msgTxt := 'INVALID ACCOUNT NUMBER';
-//        errAdvice := 'Please correct the problem and try again';
-//      end
-//      else begin
-//        msgTxt := 'GENERAL OFX LOGIN ERROR';
-//        errAdvice := 'Please contact your BROKER for assistance.';
-//      end;
-//      // --------------------------------
-//      // reformat ErrorMessage to 60 chars wide
-//      errMsg := wrapText(OFXImport.ErrorMessage, 60);
-//      AssignFile(ErrLog, Settings.DataDir + '\logs\error.log');
-//      rewrite(ErrLog);
-//      errLogTxt := uppercase(TradeLogFile.CurrentAccount.FileImportFormat) + ' OFX ERROR ' + msgTxt
-//        + '; Detailed Message: ' + '"' + errMsg + '"';
-//      try
-//        write(ErrLog, errLogTxt);
-//        errLogTxt := '';
-//      finally
-//        CloseFile(ErrLog);
-//      end;
-//      // --------------------------------
-//      msgTxt := uppercase(TradeLogFile.CurrentAccount.FileImportFormat) + ' OFX ERROR ' + cr + cr +
-//        msgTxt + cr + errAdvice + cr + cr + 'Detailed Message:' + cr + '"' + errMsg + '"';
-//      mDlg(msgTxt, mtError,[mbOK], 0);
-//      exit(-1);
-//    end; // if ErrorOccurred
-//    // ----------------------------------
-//    OFXImport.SaveToFile(Settings.ImportDir + '\' + TradeLogFile.CurrentAccount.FileImportFormat +
-//        '_' + FormatDateTime('yyyyMMdd', OFXDateStart) + '_' + FormatDateTime('yyyyMMdd',
-//        OFXDateEnd) + '.ofx');
-//    result := 0;
-//    TradeList := OFXImport.GetTradeList;
-//    if TradeList.Count = 0 then
-//      exit(0);
-//    try
-//      RecCnt := TradeList.Count;
-//      // added 2014-07-11 to support OFX for baseline
-//      if ImpBaseline then
-//        setLength(ImpTrades, TradeList.Count + 1);
-//      for Trade in TradeList do begin
-//        // Some brokers might provide data just outside of what was requested.
-//        // If so, ignore it. Also, the user might try and get data beyond the
-//        // natural EndDate for a given tax Year (eg. Past 1/31/NextTaxYear for
-//        // a Cash file or Past 12/31/TaxYear for MTM - stop this as well
-//        if (Trade.Date < OFXDateStart) //
-//          or (Trade.Date > OFXDateEnd) //
-//          or TradeBeyondEndDate(Trade.Date) then begin
-//          Continue;
-//          Trade.Free;
-//        end;
-//        if (pos('FUT', Trade.TypeMult) = 1) //
-//          and (not Settings.MTMVersion or taxidVer) then
-//          FutureWarning := true;
-//        // do not import fidelity cash transactions
-//        if (Trade.Ticker = 'FCASH') then
-//          Continue;
-//        // fix for OPT-0
-//        if (Trade.TypeMult = 'OPT-0') then
-//          Trade.TypeMult := 'OPT-100';
-//        inc(result);
-//        // added to support OFX for baseline
-//        if ImpBaseline then begin
-//          Trade.calcAmount; // 2015-04-04 MB - needed so Schwab commission is correct
-//          ImpTrades[result].it := Trade.ID;
-//          ImpTrades[result].DT := DateToStr(Trade.Date, Settings.UserFmt);
-//          ImpTrades[result].tm := Trade.Time;
-//          ImpTrades[result].oc := Trade.oc;
-//          ImpTrades[result].ls := Trade.ls;
-//          ImpTrades[result].tk := Trade.Ticker;
-//          ImpTrades[result].sh := Trade.Shares;
-//          ImpTrades[result].pr := Trade.Price;
-//          ImpTrades[result].prf := Trade.TypeMult;
-//          ImpTrades[result].cm := Trade.Commission;
-//          ImpTrades[result].opTk := Trade.OptionTicker;
-//          ImpTrades[result].am := Trade.Amount;
-//          miniOptions(ImpTrades[result]);
-//        end
-//        else
-//          TradeLogFile.AddTrade(Trade);
-//        // get list of imported tickers
-//        if (impTicksList.IndexOf(Trade.Ticker) = -1) then
-//          impTicksList.Add(Trade.Ticker);
-//        if CheckRecordLimit then
-//          break;
-//      end;
-//    finally
-//      TradeList.Free;
-//    end;
-//  end;
-// ----------------------------------
 // ----------------------------------
 begin
   try
@@ -24235,9 +25109,6 @@ begin
     ImportHasCusips := false;
     FutureWarning := false;
     bFileSaved := false;
-//    OFX := false;
-//    OFXImport := nil;
-//    OFXFile := '';
     glNumCancelledTrades := 0;
     with frmMain do begin
       setLength(ImpTrades, 0);
@@ -24251,9 +25122,6 @@ begin
       // Import via Passiv            |
       // -----------------------------+
       if (TradeLogFile.CurrentAccount.importFilter.FastLinkable) //
-//    and not(Settings.LegacyBC //
-      and ((TradeLogFile.CurrentAccount.importFilter.FilterName = 'E-Trade') //
-        or (TradeLogFile.CurrentAccount.importFilter.FilterName = 'Fidelity')) //
       then begin
         // --- get date range -----
         F := TdlgImport.Create(nil);
@@ -24301,33 +25169,8 @@ begin
         // this keeps TL from crashing when importing, undoing, and then
         // importing a different number of records  - why????
         sleep(1000);
-      end; // if Yodlee or Legacy
+      end; // if Passiv or Legacy
       // ----------------------------------------
-//      if OFX then begin // import via OFX
-//      // ----------------------------------------
-//        StatBar('Getting OFX Data from Broker . . . Please Wait!');
-//        screen.Cursor := crHourglass;
-//        OFXImport := GetTLImportClass(TradeLogFile.CurrentAccount.importFilter);
-//        if (length(OFXFile) > 0) then begin
-//          OFXImport.LoadFromFile(OFXFile)
-//        end
-//        else begin
-//          OFXImport.GetOFXData(TradeLogFile.CurrentAccount.OFXUserName, //
-//            TradeLogFile.CurrentAccount.OFXPassword, //
-//
-//            TradeLogFile.CurrentAccount.OFXAccount, //
-//            OFXDateStart, OFXDateEnd + 1);
-//        end;
-//        RecCnt := ImportOFXData;
-//        if RecCnt < 1 then begin
-//          StatBar('off');
-//          if (RecCnt = 0) then
-//            noRecsImportedMsg;
-//          exit;
-//        end;
-//      end // OFX
-//      // ----------------------------------------
-//      else
       begin // import via import filters
       // ----------------------------------------
         if cancelURL then begin
@@ -24422,8 +25265,6 @@ begin
           changeCusips;
 // panelQS.doQuickStart(4, 1);
       end; // <-- if NOT importing baseline positions
-//      importingOFX := false;
-//      OFX := false;
       ETProSWS := false;
       etradeHist := false;
         // check for new Future Multipliers, Strategies, etc. not in Global lists
@@ -24546,11 +25387,6 @@ begin // FileImport
       // importing a different number of records  - why????
       sleep(1000);
       // ----------------------------------------
-//      if OFX then begin // import via OFX
-//        sm('OFX error');
-//      end
-//      // ----------------------------------------
-//      else
       begin // import via import filters
       // ----------------------------------------
         if cancelURL then begin

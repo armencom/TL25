@@ -582,6 +582,7 @@ type
       function GetHasAccountType(AccountType : TTLAccountType): boolean;
       function GetHasCTNType : boolean;
       function GetHasVTNType : boolean;
+      function GetHasDCYType : boolean;
       function GetIsAllMTM(): boolean;
       function GetCurrentAcctHasRecords : boolean;
       function GetCurrentAcctName : string;
@@ -749,6 +750,7 @@ type
       property HasAccountType[AccountType : TTLAccountType] : boolean read GetHasAccountType;
       property HasCTNType : boolean read GetHasCTNType;
       property HasVTNType : boolean read GetHasVTNType;
+      property HasDCYType : boolean read GetHasDCYType;
       property IsAllMTM : boolean read GetIsAllMTM;
       property NegShareTrades : TTradeList read GetNegShareTrades;
       property CancelledTrades : TTradeList read GetCancelledTrades;
@@ -1365,6 +1367,20 @@ begin
       FFileImportFormat := 'CenterPoint'
     else if (FFileImportFormat = 'COR') then
       FFileImportFormat := 'Axos';
+    // 2026 E-Trade/MorganStanley merger
+    if (StrToInt('0'+pTaxYear) > 2024) //
+    or (StrToInt('0'+FTaxYear) > 2024) //
+    then begin
+      if (FFileImportFormat = 'E-Trade') //
+      or (FFileImportFormat = 'MorganStanley') then
+        FFileImportFormat := 'ETrade-MS';
+    end
+    else begin
+      if (FFileImportFormat = 'E-Trade') then
+        FFileImportFormat := 'ET-Legacy';
+      if (FFileImportFormat = 'MorganStanley') then
+        FFileImportFormat := 'MS-Legacy';
+    end;
     // FIELD 8 - Is MutualFunds Checked on 1099
     // In the old file format we had a Locale in this field,
     // but we were no longer using it.
@@ -3495,7 +3511,8 @@ var
 begin
   result := false;
   for Trade in FTrades do begin
-    if ((FCurrentBroker = 0) or (FCurrentBroker = Trade.Broker)) and (pos('CTN', Trade.TypeMult) = 1)
+    if ((FCurrentBroker = 0) or (FCurrentBroker = Trade.Broker)) //
+    and (pos('CTN', Trade.TypeMult) = 1)
     then
       Exit(true);
   end;
@@ -3507,8 +3524,21 @@ var
 begin
   result := false;
   for Trade in FTrades do begin
-    if ((FCurrentBroker = 0) or (FCurrentBroker = Trade.Broker)) and (pos('VTN', Trade.TypeMult) = 1)
+    if ((FCurrentBroker = 0) or (FCurrentBroker = Trade.Broker)) //
+    and (pos('VTN', Trade.TypeMult) = 1)
     then
+      Exit(true);
+  end;
+end;
+
+function TTLFile.GetHasDCYType : boolean;
+var
+  Trade : TTLTrade;
+begin
+  result := false;
+  for Trade in FTrades do begin
+    if ((FCurrentBroker = 0) or (FCurrentBroker = Trade.Broker)) //
+    and (pos('DCY', Trade.TypeMult) = 1) then
       Exit(true);
   end;
 end;

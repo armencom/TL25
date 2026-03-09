@@ -1576,7 +1576,6 @@ begin
             frmMain.cbInc8949Summary.Checked,
             frmMain.cbForm8949.Checked,
             IncludeAdjustment)
-
         end
         else begin
           dataFastReports.RunIRSD1Report;

@@ -140,7 +140,6 @@ begin
       exit;
     end;
   end;
-
 end;
 
 procedure dbFileDisconnect;

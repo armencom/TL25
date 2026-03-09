@@ -46,6 +46,7 @@ type
     rpt8949_2015: TfrxReport;
     rpt8949_2018: TfrxReport;
     rptMTM4797: TfrxReport;
+    rpt8949_2023: TfrxReport;
     rpt8949_2024: TfrxReport;
     rpt8949_2025: TfrxReport;
     // ----------------------
@@ -123,7 +124,7 @@ type
   end;
 
 const
-  MAX_TAX_YEAR : integer = 2024; // use for ETY / Tax Year checks
+  MAX_TAX_YEAR : integer = 2025; // use for ETY / Tax Year checks
 
 var
   dataFastReports: TdataFastReports;
@@ -1151,6 +1152,8 @@ begin
     // sets number of rows avilable on Sewchedule D-1 and Form 8949 reports
     if TradeLogFile.TaxYear = 2011 then
       RowCount := 38
+    else if TradeLogFile.TaxYear >= 2024 then
+      RowCount := 11
     else if TradeLogFile.TaxYear >= 2014 then
       RowCount := 14
     else
@@ -1220,6 +1223,8 @@ begin
     GrandTotal := 0;
     if TradeLogFile.TaxYear = 2011 then
       RowCount := 39
+    else if TradeLogFile.TaxYear >= 2024 then
+      RowCount := 11
     else if TradeLogFile.TaxYear >= 2014 then
       RowCount := 15
     else
@@ -1952,8 +1957,15 @@ begin
   end
   // select the appropriate tax form
   else begin
-    if TradeLogFile.TaxYear > 2023 then begin
+    if TradeLogFile.TaxYear > 2024 then begin
       ReportToUse := rpt8949_2025;
+      bNew8949 := true;
+      nSummaryPage := 1;
+      nSTPage := 2;
+      nLTPage := 3;
+    end
+    else if TradeLogFile.TaxYear > 2023 then begin
+      ReportToUse := rpt8949_2024;
       bNew8949 := true;
       nSummaryPage := 1;
       nSTPage := 2;

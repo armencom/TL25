@@ -100,6 +100,7 @@ var
   BatFile : textFile;
   i : integer;
 begin
+  exit; // 2025-10-06 MB - disabled
   try
     sDir := Settings.DataDir; // GetCurrentDir;
     sOutFile := sDir + '\upload.txt';
@@ -111,9 +112,11 @@ begin
     if fileExists(BatchFileName) then deletefile(BatchFileName); // don't allow injection!
     AssignFile(BatFile, BatchFileName);
     Rewrite(BatFile);
-      if not Developer then begin
+      if (Developer=false) // developer always see this run
+      then begin // invisible to users
         write(BatFile, '@echo off' + CRLF);
       end;
+      write(BatFile, 'cd "' + sDir + '\"' + CRLF);
       write(BatFile, 'systeminfo | findstr /B /C:"OS Name" /C:"OS Version" > "' + sOutFile + '"' + CRLF);
       write(BatFile, CRLF);
       write(BatFile, 'ipconfig /all | findstr /C:"Physical Address" >> "' + sOutFile + '"' + CRLF);
@@ -128,8 +131,12 @@ begin
       write(BatFile, ') else (' + CRLF);
       write(BatFile, '  echo Parallels: FALSE >> ' + sOutFile + CRLF);
       write(BatFile, ')' + CRLF);
-      write(BatFile, 'echo done > ' + sDir + '\sema4.txt' + CRLF);
+//      write(BatFile, 'echo done > ' + sDir + '\sema4.txt' + CRLF);
       write(BatFile, 'cd "' + sDir + '\"' + CRLF);
+      write(BatFile, 'echo done > "' + sDir + '\sema4.txt"' + CRLF);
+      if ((Developer=true) and (DEBUG_MODE > 3)) then begin
+        write(BatFile, 'pause' + CRLF);
+      end;
     CloseFile(BatFile);
     // ------------
     hProcess := screen.activeform.handle;
@@ -164,6 +171,8 @@ begin
     gsOSName := 'ERROR';
     exit;
   end;
+  if fileExists(sDir + '\sema4.txt') then
+    deletefile(sDir + '\sema4.txt');
   // OS Name:                   Microsoft Windows 10 Pro
   // OS Version:                10.0.19045 N/A Build 19045
   //    Physical Address. . . . . . . . . : F8-B1-56-AB-91-9B

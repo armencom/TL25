@@ -101,14 +101,14 @@ end;
 
 class function TTLDateUtils.IsThanksgiving(InDate : TDate) : Boolean;
 begin
-  {Assumptions: Thanksgiving is always forth Thursday in November}
+  // Assumptions: Thanksgiving is always forth Thursday in November
   Result := IsOnAGivenDate(InDate, 11, 4, 5);
 end;
 
 
-{If date falls on a weekend then increment to following monday
- as many holidays are observed on monday if they fall on the weekend,
- New Years, Chrismtas, July 4th}
+// If date falls on a weekend, then increment to following Monday.
+// Mny holidays are observed on Mnday if they fall on the weekend,
+// E.G New Years, Chrismtas, July 4th, etc.
 class function TTLDateUtils.ObservedOnDay(InDate: TDate): TDate;
 begin
   Result := InDate;
@@ -120,13 +120,13 @@ end;
 
 class function TTLDateUtils.IsMemorialDay(InDate : TDate) : Boolean;
 begin
-  {Assumptions: Memorial day is always the last monday in May.}
+  // Assumptions: Memorial day is always the last monday in May.
   Result := isOnLastOfGivenDay(InDate, 5, 2);
 end;
 
 class function TTLDateUtils.IsLaborDay(InDAte : TDate) : Boolean;
 begin
-  {Assumptions: Labor Day is always first Monday of Sept}
+  // Assumptions: Labor Day is always first Monday of Sept
   Result := IsOnAGivenDate(InDate, 9, 1, 2);
 end;
 
@@ -134,11 +134,10 @@ class function TTLDateUtils.IsChristmasDay(InDate : TDate) : Boolean;
 var
   M, D, Y : Word;
 begin
-  {Assumptions: Christmas is always on December 25th,
-    But if Dec 25 falls on a weekend then we will check against Monday since
-    it is observed officially on a weekday.}
+  // Assumptions: Christmas is always on December 25th, BUT...
+  // if Dec 25 falls on a weekend, then we will check against Monday
+  // since it is observed officially on a weekday.
   DecodeDate(InDate, Y, M, D);
-
   Result := (InDate = ObservedOnDay(EncodeDate(Y, 12, 25)));
 end;
 
@@ -146,20 +145,20 @@ class function TTLDateUtils.IsNewYearsDay(InDate : TDate) : Boolean;
 var
   M, D, Y : Word;
 begin
-  {Assumptions: New Years is always on January 1}
+  // Assumptions: New Years is always on January 1
   DecodeDate(InDate, Y, M, D);
   Result := (InDate = ObservedOnDay(EncodeDate(Y, 1, 1)));
 end;
 
 class function TTLDateUtils.IsPresidentsDay(InDate : TDate) : Boolean;
 begin
-  {Assumptions: President's Day is always the 3rd Monday in February}
+  // Assumptions: President's Day is always the 3rd Monday in February
   Result := IsOnAGivenDate(InDate, 2, 3, 2);
 end;
 
 class function TTLDateUtils.IsMartinLutherKingDay(InDate : TDate) : Boolean;
 begin
-  {Assumptions: Martin Luther King ss always the 3rd Monday in January}
+  // Assumptions: Martin Luther King ss always the 3rd Monday in January
   Result := IsOnAGivenDate(InDate, 1, 3, 2);
 end;
 
@@ -187,17 +186,15 @@ begin
   Century := Trunc(Year / 100);
   H := (Century - Trunc(Century / 4) - Trunc((8 * Century + 13) / 25) + 19 * G + 15) mod 30;
   I := H - Trunc(h / 28) * (1 - Trunc(H / 28) * Trunc(29 / (H + 1)) * Trunc((21 - G) / 11));
-
+  // ----
   Day  := I - ((Year + Trunc(Year / 4) + I + 2 - Century + Trunc(Century / 4)) mod 7) + 28;
   Month := 3;
-
-  if (day > 31) then
-  begin
+  // ----
+  if (day > 31) then begin
     Month := Month + 1;
     Day := Day - 31;
   end;
-
-  {Subtract two days from Easter Sunday and compare}
+  // Subtract two days from Easter Sunday and compare.
   Result := (InDate = IncDay(EncodeDate(Year, Month, Day), - 2));
 end;
 
@@ -210,19 +207,16 @@ begin
     raise Exception.Create('Month must be within 1 and 12');
   if not (DayOfWeek in [1..7]) then
     raise Exception.Create('Day Of Week must be within 1 and 7 where 1 is Sunday, 2 is Monday and so on.');
-
+  // ----
   DecodeDate(InDate, Y, M, D);
   if (M <> Month) then
     Exit(False);
-
-  {Get the last day of the month and work backward until you get to the day of week}
+  // Get the last day of the month and work backward until you get to the day of week
   DT := EncodeDate(Y, M, DaysInMonth(InDate));
-
-  while (SysUtils.DayOfWeek(DT) <>  DayOfWeek) do
+  while (SysUtils.DayOfWeek(DT) <>  DayOfWeek) do begin
     DT := IncDay(DT, -1);
-
+  end; // while loopo
   Result := (InDate = DT);
-
 end;
 
 class function TTLDateUtils.IsOnAGivenDate(InDate : TDate; Month : Word; Week : Word; DayOfWeek : Word) : Boolean;
@@ -237,30 +231,29 @@ begin
     raise Exception.Create('Month must be within 1 and 12');
   if not (DayOfWeek in [1..7]) then
     raise Exception.Create('Day Of Week must be within 1 and 7 where 1 is Sunday, 2 is Monday and so on.');
-
+  // ----
   DecodeDate(InDate, Y, M, D);
   if (M <> Month) then
     Exit(False);
-
-  {Get First Day Of Month}
+  // Get First Day Of Month
   DT := EncodeDate(Y, M, 1);
-
-  {Drop one off of the week so we start at the beginning of the week}
+  // Drop one off of the week so we start at the beginning of the week
   WeekIncrement := (Week - 1) * 7;
-
-  {Increment so as to get to the start of the week
-    This could be zero if they ask for Week 1. This routine
-    does not look at physical weeks but just starts on the first and adds the minimum
-    number of days to get to the first possible instance of the DayOfWeek in Week Number.
-    Then it increments the date until it finds the appropriate day of week.
-    the number of weeks into the month}
+  // Increment so as to get to the start of the week
+  // This could be zero if they ask for Week 1.
+  // This routine does not look at physical weeks but just starts on the first
+  // and adds the minimum number of days to get to the first possible instance
+  // of the DayOfWeek in Week Number. Then it increments the date until it
+  // finds the appropriate day of week.
+  // ----
+  // the number of weeks into the month
   if WeekIncrement > 0 then
      DT := IncDay(DT, WeekIncrement);
-  while SysUtils.DayOfWeek(DT) <> DayOfWeek do
+  while SysUtils.DayOfWeek(DT) <> DayOfWeek do begin
     DT := IncDay(DT);
-
+  end; // while loop
   Result := (InDate = DT);
-
 end;
+
 
 end.

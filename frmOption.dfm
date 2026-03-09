@@ -680,6 +680,10 @@ object frmOptionDlg: TfrmOptionDlg
     object TabETNs: TTabSheet
       Caption = 'ETF/ETN'
       ImageIndex = 5
+      ExplicitLeft = 0
+      ExplicitTop = 0
+      ExplicitWidth = 0
+      ExplicitHeight = 0
       DesignSize = (
         450
         378)

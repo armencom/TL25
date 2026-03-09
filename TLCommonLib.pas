@@ -109,6 +109,9 @@ function IsNumber(str: string): Boolean; // e.g. IsNumber('2016')
 function IsDate(str: string): Boolean; // e.g. IsDate('11/10/16')
 function IsInDateRange(sTestDate, sDate1, sDate2: string): boolean;
 
+// convert string in format "MMM DD, YYYY HH:MM:SS" to TDateTime
+function ConvertCustomDateTime(const DateTimeStr: string): TDateTime;
+
 
 var
   MsgTxt,   // Used in a lot of places for message text}
@@ -1685,6 +1688,68 @@ begin
   dt2 := StrToDate(sDate2);
   if (dtTst < dt1) or (dtTst > dt2) then exit;
   result := true;
+end;
+
+
+// ------------------------------------------------------------------
+// convert string in "MMM DD, YYYY HH:MM:SS TZ" format to TDateTime
+// ------------------------------------------------------------------
+function ConvertCustomDateTime(const DateTimeStr: string): TDateTime;
+var
+  FormatSettings: TFormatSettings;
+  DatePart, TimePart, MonthStr, DayStr, YearStr, HourStr, MinStr, SecStr: string;
+  MonthNum, DayNum, YearNum, HourNum, MinNum, SecNum: Word;
+  I: Integer;
+begin
+  // Ensure thread safety and consistent format by using TFormatSettings
+  // created from the default locale.
+  GetLocaleFormatSettings(0, FormatSettings);
+  // 1. Split the input string into Date and Time parts
+  // The input format is "MMM DD, YYYY HH:MM:SS TZ"
+  // First, isolate the date part (e.g., "Nov 28, 2025")
+  DatePart := Trim(Copy(DateTimeStr, 1, Pos(' ', DateTimeStr, 5) - 1)); // Ends before the 2nd space (after YYYY)
+  // Re-adjust DatePart and TimePart extraction if needed. A better way:
+  // Find the comma to split date components
+  DatePart := Copy(DateTimeStr, 1, Pos(',', DateTimeStr) - 1); // "Nov 28"
+  TimePart := Trim(Copy(DateTimeStr, Pos(',', DateTimeStr) + 1, Length(DateTimeStr))); // "YYYY HH:MM:SS"
+  // This approach is complicated due to the comma placement.
+  // A better approach is to manually extract substrings by position/separator.
+  // Re-parsing approach:
+  // Input: "Nov 28, 2025 18:08:55"
+  MonthStr := Copy(DateTimeStr, 1, 3); // "Nov"
+  DayStr := Copy(DateTimeStr, 5, Pos(',', DateTimeStr) - 5); // "28" (need to trim spaces)
+  DayStr := Trim(DayStr);
+  // Year starts after the comma and space, ends before the next space
+  YearStr := Copy(DateTimeStr, Pos(',', DateTimeStr) + 2, 4); // "2025"
+  // Time part starts after the Year and space
+  TimePart := Trim(Copy(DateTimeStr, Pos(',', DateTimeStr) + 7, Length(DateTimeStr))); // "18:08:55"
+  if POS(' ', TimePart) > 0 then begin
+    TimePart := Trim(LeftStr(TimePart, POS(' ', TimePart)));
+  end;
+  // 2. Convert Month Name (MMM) to Month Number (MM)
+  MonthNum := 0;
+  // Iterate through ShortMonthNames array (1-based index in Delphi)
+  for I := Low(FormatSettings.ShortMonthNames) //
+  to High(FormatSettings.ShortMonthNames) do begin
+    if SameText(MonthStr, FormatSettings.ShortMonthNames[I]) then begin
+      MonthNum := I;
+      Break;
+    end;
+  end;
+  if MonthNum = 0 then begin
+    raise EConvertError.Create('Invalid month name in date string:' + CRLF + DateTimeStr);
+  end;
+  // 3. Convert other parts to numbers
+  YearNum := StrToInt(YearStr);
+  DayNum := StrToInt(DayStr);
+  // Use StrToTime to parse "HH:MM:SS" part, as it handles standard time formats well
+  // We can combine Date components using EncodeDate
+  try
+    Result := EncodeDate(YearNum, MonthNum, DayNum) + StrToTime(TimePart, FormatSettings);
+  except
+    on E: EConvertError do
+      raise EConvertError.Create('Error converting time part: ' + E.Message);
+  end;
 end;
 
 

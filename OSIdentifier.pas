@@ -131,7 +131,6 @@ begin
       write(BatFile, ') else (' + CRLF);
       write(BatFile, '  echo Parallels: FALSE >> ' + sOutFile + CRLF);
       write(BatFile, ')' + CRLF);
-//      write(BatFile, 'echo done > ' + sDir + '\sema4.txt' + CRLF);
       write(BatFile, 'cd "' + sDir + '\"' + CRLF);
       write(BatFile, 'echo done > "' + sDir + '\sema4.txt"' + CRLF);
       if ((Developer=true) and (DEBUG_MODE > 3)) then begin

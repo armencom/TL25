@@ -575,6 +575,7 @@ begin
       end;
       exit;
     end
+// else if (n = 401) then begin // check message
     else if (n < 100) or (n > 399) then begin
       if pos('"message":"invalid password"', lowercase(postData)) > 0 then begin
         gbOffline := false;

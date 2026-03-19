@@ -5566,7 +5566,9 @@ begin // ReadETradeXLSX
     result := -1;
     exit;
   end;
-  ReverseImpTradesDate(R);
+  if R > 1 then
+    if xStrToDate(ImpTrades[1].DT) > xStrToDate(ImpTrades[R].DT) then
+      ReverseImpTradesDate(R);
   result := R;
 end; // ReadETradeXLSX
 
@@ -22506,7 +22508,7 @@ begin // ReadWebullOmniCSV
       // ------------------------------
       line := ImpStrList[i];
       line := uppercase(line); // from here on, search line for UPPERCASE string tokens...
-      junk := replacestr(line, ',', '');
+      junk := replacestr(line, ',', ''); // 2026-02-18 MB - error trap added
       if junk = '' then begin
         continue;
       end;
@@ -22536,6 +22538,7 @@ begin // ReadWebullOmniCSV
       end;
       // --- Date ---------------------
       ImpDate := fieldLst[iDt]; // format: MM/DD/YY
+      if trim(ImpDate) = '' then continue;
       if pos('-', ImpDate) = 5 then begin
         ImpDate := StringReplace(ImpDate, '-', '', [rfReplaceAll]);
         ImpDate := MMDDYYYY(ImpDate); // it comes in yyyy-mm-dd
@@ -22546,7 +22549,6 @@ begin // ReadWebullOmniCSV
         // DataConvErrRec := DataConvErrRec + 'invalid date: ' + ImpStrList[i] + cr;
         Continue;
       end;
-      inc(R); // if it gets this far, count it
       // --- Time of day -
       if iTm < 0 then
         ImpTime := ''
@@ -22583,11 +22585,16 @@ begin // ReadWebullOmniCSV
         oc := 'X';
         cancels := true;
       end
+      else if pos('CASHMOVEMENT', fieldLst[iOC]) = 1 then begin
+        CONTINUE; // SKIP IT
+      end
       else begin // error
         DataConvErrRec := DataConvErrRec + 'unknown OC/LS: ' + ImpStrList[i] + cr;
         oc := 'E';
         ls := 'E';
       end;
+      // ---
+      inc(R); // if it gets this far, count it
       // --- # shares ---
       ShStr := fieldLst[iShr];
       ShStr := delCommas(ShStr);
@@ -25172,7 +25179,6 @@ begin
       end; // if Passiv or Legacy
       // ----------------------------------------
       begin // import via import filters
-      // ----------------------------------------
         if cancelURL then begin
           mDlg('Import Cancelled', mtInformation, [mbOK], 0);
           if ImpBaseline then
@@ -25388,7 +25394,6 @@ begin // FileImport
       sleep(1000);
       // ----------------------------------------
       begin // import via import filters
-      // ----------------------------------------
         if cancelURL then begin
           mDlg('Import Cancelled', mtInformation, [mbOK], 0);
           if ImpBaseline then

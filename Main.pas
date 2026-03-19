@@ -9545,9 +9545,6 @@ begin
     end;
   end;
   // ------------------------
-//  DeleteBrokerLink(v2ClientToken, 'TL:23113', '66e88d71-79f5-4dbe-a0a7-9df63fd0e674');
-//  exit;
-  // ------------------------
   if TaxYear = '' then sN := inputbox('Tax Year','yyyy: ', '') else sN := TaxYear;
   t := inputbox('Get MTM Price for...', 'option:', t);
   if length(t) > 9 then
@@ -9590,7 +9587,6 @@ begin
   t := GetPassivBrokerId(sAuth, sN, s);
   sm('broker id: ' + t);
 //  t := inputbox('broker id','copy/paste here', t);
-//  DeleteBrokerLink(sAuth, sN, t); // 'zaronan', '3ca2249b-b246-40bf-bcc7-adef262fff0e');
   exit;
 //  bFlag := true;
 //  if TaxYear = '' then sN := inputbox('Tax Year','yyyy: ', '') else sN := TaxYear;

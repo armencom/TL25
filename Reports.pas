@@ -1569,9 +1569,6 @@ begin
         if not PrepareForGainsReports(SDate, EDate, True, True) then exit;
         if (strToInt(Taxyear) > 2010) then begin
           b8949 := True;
-
-//          dataFastReports.Run8949Summary;
-
           dataFastReports.Run8949Report(
             frmMain.cbInc8949Summary.Checked,
             frmMain.cbForm8949.Checked,

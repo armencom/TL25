@@ -79,6 +79,14 @@ var
   sAccts, sAcct : TStrings;
   iNDX : integer;
 
+// --------------------------------------------------------
+// --------------------------------------------------------
+function FilterToBroker(sFilter : string): string;
+begin
+  if (sFilter = 'ET-Legacy') then result := 'E-Trade'
+  else if (sFilter = 'ETrade-MS') then result := 'E-Trade'
+  else result := sFilter;
+end;
 
 // --------------------------------------------------------
 // Get user's accounts from API, load into combobox
@@ -159,7 +167,7 @@ begin
           // ------------------------------------
           // Accounts for this Broker
           // ------------------------------------
-          if lineLst[9] = sBrokerName then begin // 2025-10-10 MB - used to match sPassivBrokerId
+          if (lineLst[9] = sBrokerName) then begin // 2025-10-10 MB - used to match sPassivBrokerId
             // ------------------------
             // Account number if given
             // ------------------------
@@ -241,7 +249,8 @@ begin
   end;
   // --- Load from TDF ------
   sPassivAcctId := TradeLogFile.CurrentAccount.PlaidAcctId; // Broker Account Id
-  sBrokerName := TradeLogFile.CurrentAccount.FileImportFormat;
+  s := TradeLogFile.CurrentAccount.FileImportFormat;
+  sBrokerName := FilterToBroker(s);
   sClientName := TradeLogFile.CurrentAccount.OFXUserName;
   edUser.Text := sClientName; // 2024-11-12 MB
   if sClientName = '' then sClientName := 'TL'; // new default

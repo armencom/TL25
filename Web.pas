@@ -93,7 +93,7 @@ var
   nextDateStart:TDate;
   dateStart, dateEnd: string;
 
-procedure supportExpired;
+
 procedure getWebPage(url:string);
 procedure setupBrokerConnect(url,dtStart,dtEnd:string);
 procedure getWebBrowserWindows;
@@ -1545,15 +1545,6 @@ end;
 
 
 // --------------------------------------------------------
-procedure supportExpired;
-begin
-  getWebPage('https://www.tradelogsoftware/purchase/');
-  mDlg('Your one year of free updates and support has expired!'+cr+cr+
-    'Please order a one year renewal of updates and support '+cr+
-    'from our Purchase page'+cr
-    ,mtWarning, [mbOK], 0);
-end;
-
 
 procedure setupWeb;
 begin

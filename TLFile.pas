@@ -3524,8 +3524,9 @@ var
 begin
   result := false;
   for Trade in FTrades do begin
-    if ((FCurrentBroker = 0) or (FCurrentBroker = Trade.Broker)) //
-    and (pos('VTN', Trade.TypeMult) = 1)
+    if ((FCurrentBroker = 0) //
+    or (FCurrentBroker = Trade.Broker)) //
+    and (pos('VTN', Trade.TypeMult) = 1) //
     then
       Exit(true);
   end;
@@ -4081,7 +4082,6 @@ begin
         n := lineList.Count - 1; // number of lines - before deleting any
         i := 0; // start loop
         while i <= n do begin
-
           Line := lineList[i]; // sm(line);
           ColData.DelimitedText := Line;
 //          if SuperUser and (ColData.Count < 8) then begin

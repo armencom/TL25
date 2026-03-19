@@ -19,6 +19,7 @@ type TLETY = class
     procedure CopyAShortLossTradesToNextYear(NextYearTrades: TTradeList);
     procedure CopyBJanTradesToNextYearTradesList(NextYearTrades: TTradeList);
     procedure CopyCOpenPositionsToNextYear(NextYearTrades: TTradeList);
+    procedure CopyOpenVTNsToNextYear(NextYearTrades : TTradeList);
     function CopyDnextYearTradesToNextYearFile(NextYearTrades: TTradeList): boolean;
   public
     function EndTaxYear(): boolean;
@@ -48,6 +49,86 @@ const
 var
   NewFile: TTLFile;
   bSaveNewFile : boolean;
+
+
+procedure TLETY.CopyOpenVTNsToNextYear(NextYearTrades : TTradeList);
+var
+  i, j, RecIdx : Integer;
+  openSh : double;
+  Trade : TTLTrade;
+  SettleDate, dt1, dtEOY : TDate;
+  Y, m, D : word;
+begin
+  StatBar('Copying Open VTNs to Next Year');
+  // get one TrSum record with total shares open and closed for each ticker
+  // NOTE: Should include all O/M combinations, too!
+  dtEOY := xStrToDate('12/31/' + TaxYear, Settings.internalFmt);
+  for i := high(TradesSum) downto 1 do begin
+    // IF this is an open position
+    // AND is in the current tax year
+    // AND finally is a VTN
+    // THEN we need to move this open position to next year
+    // ------------------------------------------
+    if (TradesSum[i].os <> TradesSum[i].cs) //
+    and (xStrToDate(TradesSum[i].od, Settings.UserFmt) <= dtEOY) //
+    and (pos('VTN', TradesSum[i].prf) = 1) //
+    then begin
+      // total shares open for each ticker
+      openSh := RndTo5(TradesSum[i].os - TradesSum[i].cs);
+      if abs(rndTo5(openSh)) < NEARZERO //
+      then continue;
+      // loop backwards thru trades to gather open position records
+      for j := frmMain.cxGrid1TableView1.DataController.FilteredRecordCount - 1 downto 0 do begin
+        RecIdx := frmMain.cxGrid1TableView1.DataController.FilteredRecordIndex[j];
+          // find open position
+        if (TradeLogFile[RecIdx].TradeNum = TradesSum[i].tr) //
+        and (TradeLogFile[RecIdx].Ticker = TradesSum[i].tk) //
+        and (TradeLogFile[RecIdx].oc = 'O') //
+        and (TradeLogFile[RecIdx].Date <= dtEOY) then begin
+          if openSh = 0 then break;
+          /////// BIG TIME MEMORY LEAK //////
+          Trade := TTLTrade.Create(TradeLogFile.Trade[RecIdx]);
+          ///////////////////////////////////
+          if (Trade.Shares = openSh) then begin // exact match?
+            TradesSum[i].os := TradesSum[i].os - openSh;
+            openSh := 0; // os-cs;
+            NextYearTrades.Add(Trade);
+            break; // Break out of TradeLogFile Loop since there are no more shares
+          end
+          // Open Shares for this trade are greater than open shares
+          // so this satisfies the open shares but needs to be split,
+          // Open Shares to next year, Closed Shares to current Year.
+          else if (Trade.Shares > openSh) then begin // some, but not all
+            // split the commission to next year
+            Trade.Commission := openSh / Trade.Shares * Trade.Commission;
+            // split the Amount to next year
+            Trade.Amount := openSh / Trade.Shares * Trade.Amount;
+            // Amount is calculated except for wash sales so we need to calc these.
+            if Trade.oc = 'W' then begin
+              if Trade.ls = 'L' then
+                Trade.Amount := -TradeLogFile[RecIdx].Shares * Trade.Price
+              else
+                Trade.Amount := TradeLogFile[RecIdx].Shares * Trade.Price;
+            end;
+            Trade.Shares := openSh;
+            TradesSum[i].os := TradesSum[i].os - openSh;
+            openSh := 0;
+            NextYearTrades.Add(Trade);
+            break;
+          end
+          // If Shares is less than open shares then just move this over to the next year file.
+          else if (Trade.Shares < openSh) then begin
+            TradesSum[i].os := TradesSum[i].os - TradeLogFile[RecIdx].Shares;
+            openSh := RndTo5(TradesSum[i].os - TradesSum[i].cs);
+            NextYearTrades.Add(Trade);
+            // keep going for MORE shares...
+          end; // if Trade.Shares
+        end; // if find open position
+      end; // for j := <trades in filtered grid>
+      // ----------------------------------------
+    end; // VTN, not closed, this tax year
+  end; // for i := <tradesum records>
+end; // CopyOpenVTNsToNextYear(NextYearTrades);
 
 
 //// Main End Yax Year procedure ////
@@ -141,7 +222,11 @@ begin // ProcessYearEnd
         if FilterByBrokerAccountType(True, false, false, True, True) then begin
           if frmMain.cxGrid1TableView1.DataController.FilteredRecordCount > 0
           then begin
-            if not processMTMAccount(LastOpenTrNum, NextYearTrades) then begin
+            if processMTMAccount(LastOpenTrNum, NextYearTrades) then begin
+              FilterByType('VTN', True);
+              CopyOpenVTNsToNextYear(NextYearTrades);
+            end
+            else begin
               ETYaborted := True;
               exit; // this does NOT exit procedure --> it jumps down to FINALLY
             end;
@@ -190,7 +275,11 @@ begin // ProcessYearEnd
           FilterByType('FUT', True);
           if frmMain.cxGrid1TableView1.DataController.FilteredRecordCount > 0
           then begin
-            if not processMTMAccount(LastOpenTrNum, NextYearTrades) then begin
+            if processMTMAccount(LastOpenTrNum, NextYearTrades) then begin
+              FilterByType('VTN', True);
+              CopyOpenVTNsToNextYear(NextYearTrades);
+            end
+            else begin
               ETYaborted := True;
               exit; // this does NOT exit procedure --> it jumps down to FINALLY
             end;
@@ -387,7 +476,7 @@ begin
         frmMain.FreeTrSumList;
       end;
     end;
-    CopyCOpenPositionsToNextYear(NextYearTrades);
+    CopyCOpenPositionsToNextYear(NextYearTrades); // <-- carry opens
     ReportStyle := rptNone;
     result := True;
   finally
@@ -415,19 +504,19 @@ end;
 
 function TLETY.EnterYearEndPrice(LastOpenTrNum:integer; NextYearTrades:TTradeList): boolean;
 var
-  i, x, RecIdx: integer;
-  Amount, mult: double;
-  clickedOK: boolean;
-  cType: string;
-  // NextYearFile: TTLFile;  // not used??
-  PriceList: TPriceList;
-  PriceRec: TPrice;
-  Trade: TTLTrade;
-  NextYrTrade: TTLTrade;
-  Price: double;
+  i, x, RecIdx : integer;
+  Amount, mult : double;
+  clickedOK : boolean;
+  cType : string;
+  trVTNlist : string;
+  PriceList : TPriceList;
+  PriceRec : TPrice;
+  Trade : TTLTrade;
+  NextYrTrade : TTLTrade;
+  Price : double;
   { List of BrokerID's that have Cash Account Futures processed,
-    This is needed in order to MatchAndReorganize any cash accounts with Futures
-    that were processed }
+    This is needed in order to MatchAndReorganize any cash accounts
+    with Futures that were processed }
   FuturesProcessed: TList<integer>;
   dtEOY, dtBONY : TDate;
   // --------------------------------------------
@@ -451,6 +540,7 @@ begin
   LoadTradesSumTaxYear;
   FuturesProcessed := TList<integer>.Create;
   PriceList := TPriceList.Create;
+  trVTNlist := '';
   try
     dtEOY := xStrToDate('12/31/' + TaxYear, Settings.internalFmt);
     dtBONY := xStrToDate('01/01/' + NextTaxYear, Settings.internalFmt);
@@ -465,7 +555,11 @@ begin
           frmMain.cxGrid1.SetFocus;
           break;
         end;
-        if (POS('VTN-', TradesSum[i].prf) <> 1) then begin // 2019-08-14 MB - Skip VTN per Jason email
+        if (POS('VTN-', TradesSum[i].prf) = 1) then begin // 2019-08-14 MB - Skip VTN per Jason email
+          if trVTNlist <> '' then trVTNlist := trVTNlist + ',';
+          trVTNlist := trVTNlist + IntToStr(TradesSum[i].tr);
+        end
+        else begin // 2019-08-14 MB - Skip VTN per Jason email
           Price := getYearEndMTMprice(TradesSum[i].tk, TradesSum[i].prf, false);
           // Create a list of prices.
           FillChar(PriceRec, SizeOf(PriceRec), 0);
@@ -526,7 +620,7 @@ begin
           TradeLogFile.AddTrade(Trade); // add M rec to this year
           // add Year End MTM price to next year data file
           AddTradeToNextYearTrades;
-        end; // for
+        end; // for i := 0 to PriceList.Count-1
         if FuturesProcessed.Count > 0 then begin
           TradeLogFile.MatchAndReorganizeAllAccounts;
           TradelogFile.SaveFile;
@@ -537,6 +631,8 @@ begin
       else
         stopUpdate := True;
     end; // if Price
+    // --------------------------------
+
     // --------------------------------
     for i := 0 to frmMain.cxGrid1TableView1.datacontroller.FilteredRecordCount - 1 do begin
       RecIdx := frmMain.cxGrid1TableView1.datacontroller.FilteredRecordIndex[i];
@@ -824,7 +920,7 @@ begin
     then begin
       // total shares open for each ticker
       openSh := RndTo5(TradesSum[i].os - TradesSum[i].cs);
-      if abs(rndTo5(openSh)) < NEARZERO // (StrFmtToFloat('%1.5f', [openSh], Settings.UserFmt) = 0)
+      if abs(rndTo5(openSh)) < NEARZERO //
       then continue;
       // loop backwards thru trades to gather open position records
       for j := frmMain.cxGrid1TableView1.DataController.FilteredRecordCount - 1 downto 0 do begin

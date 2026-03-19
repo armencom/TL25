@@ -3816,8 +3816,9 @@ begin
               end;
               // 2018-04-16 MB - skip certain types for WS
               if (Pos('DCY', TrSum.prf) > 0) // DCY
-                or (Pos('CTN', TrSum.prf) > 0) // CTN
-                or (Pos('VTN', TrSum.prf) > 0) then begin
+              or (Pos('CTN', TrSum.prf) > 0) // CTN
+              or (Pos('VTN', TrSum.prf) > 0) // VTN
+              then begin
                 inc(j);
                 continue;
               end;
@@ -4338,7 +4339,8 @@ begin
           end;
         // If Wash Sale does not exist for this loss then add to potential ws Losses
           if (ReportStyle <> rptPotentialWS) // when running Potential WS report...
-            or (Pos('VTN', TrSum.prf) <> 1) then begin // 2018-12-18 MB - ...Skip VTNs
+          or (Pos('VTN', TrSum.prf) <> 1)  // 2018-12-18 MB - ...Skip VTNs
+          then begin
             if not LossHasWashSale then
               LoadNewTradesDeferralDetails(TrSum, nil)
             else if ((TrSum.os * mult1) - (WSum.os * mult2) > 0) then

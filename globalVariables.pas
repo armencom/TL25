@@ -57,6 +57,7 @@ var
   // ----- for Pro and Super Users ----
   v2ClientToken, v2ClientEmail, v2CustomerId : string;
   FileCodeToUse: string;
+
   gsErrorLog, gsErrorText : string;
 
   // ----- TradeLog Run States --------
